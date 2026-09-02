@@ -331,50 +331,68 @@ function zoneSigns(plan, L, done) {
   const B = L.blocks, c = plan.crops, ls = plan.livestock;
   const has = function (id) { return done.indexOf(id) >= 0; };
   const nm = function (x) { return x ? x.name : null; };
+
+  // A board is only a few tiles wide, so a long crop name will not sit on it.
+  // Try the common name, then the local one (Bajra for pearl millet), then a
+  // generic word. The full name always leads the hover text either way.
+  const fits = function (t) { return t && t.length <= 8; };
+  const boardName = function (crop, fallback) {
+    if (!crop) return fallback;
+    if (fits(crop.name)) return crop.name;
+    const local = (crop.local || '').split(/[\/,]/)[0].trim();
+    if (fits(local)) return local;
+    return fallback;
+  };
   const out = [];
   // The board shows the section name and nothing else. Its size, crop and
   // counts are one hover away, and the tally line under the map carries the
   // livestock totals.
-  const sign = function (rect, label, tip, action) {
+  // `label` is what fits on a small wooden board; `tip` opens with the full
+  // name and carries the detail.
+  const sign = function (rect, label, full, tip, action) {
     out.push({
-      x: rect.x + rect.w / 2, y: rect.y, label: label, tip: tip, action: action
+      x: rect.x + rect.w / 2, y: rect.y,
+      label: label, tip: full + ' — ' + tip, action: action
     });
   };
 
   if (has('zones')) {
-    sign(B.home, 'Homestead', acresText(plan.acres * 0.08) + ' with sheds and paths',
+    sign(B.home, 'Home', 'Homestead',
+      acresText(plan.acres * 0.08) + ' with sheds and paths',
       { type: 'step', id: 'zones' });
-    sign(B.animals, 'Animal yard',
+    sign(B.animals, 'Animals', 'Animal yard',
       ls.dairy + ' cattle · ' + ls.goats + ' goats · ' + ls.poultry + ' birds',
       { type: 'animal', id: 'cattle' });
   }
   if (has('kharif') || has('rabi')) {
     const crop = has('rabi') && c.stapleRabi ? c.stapleRabi : c.stapleKharif;
-    sign(B.cereal, nm(crop) || 'Cereal', acresText(plan.scale.grain) + ' of staple grain',
+    sign(B.cereal, boardName(crop, 'Cereal'), nm(crop) || 'Cereal block',
+      acresText(plan.scale.grain) + ' of staple grain',
       crop ? { type: 'crop', id: crop.id } : null);
   }
   if (has('fodder-plot')) {
-    sign(B.fodder, 'Fodder', acresText(plan.scale.fodder) + ' of ' +
+    sign(B.fodder, 'Fodder', 'Fodder plot', acresText(plan.scale.fodder) + ' of ' +
       (nm(c.fodder[0]) || 'napier') + ', about 0.25 acre an animal',
       c.fodder[0] ? { type: 'crop', id: c.fodder[0].id } : null);
   }
   if (has('pulses')) {
-    sign(B.pulses, 'Pulses & oilseeds', acresText(plan.acres * 0.12) + ' of ' +
+    sign(B.pulses, 'Pulses', 'Pulses & oilseeds', acresText(plan.acres * 0.12) + ' of ' +
       [nm(c.pulses[0]), nm(c.oilseeds[0])].filter(Boolean).join(' and '),
       c.pulses[0] ? { type: 'crop', id: c.pulses[0].id } : null);
   }
   if (has('pond')) {
-    sign(B.pond, 'Farm pond', acresText(ls.pond) +
+    sign(B.pond, 'Pond', 'Farm pond', acresText(ls.pond) +
       (has('fish') ? ' · carp polyculture' : ' · irrigation buffer'),
       { type: 'step', id: 'pond' });
   }
   if (has('kitchen-garden')) {
     const g = gardenRect(L);
-    sign(g, 'Kitchen garden', acresText(plan.scale.veg) + ' of raised beds, sown in succession',
+    sign(g, 'Garden', 'Kitchen garden',
+      acresText(plan.scale.veg) + ' of raised beds, sown in succession',
       c.veg[0] ? { type: 'crop', id: c.veg[0].id } : null);
   }
   if (has('boundary-trees')) {
-    sign({ x: L.fence.x + 2, y: L.fence.y + 1, w: 6, h: 1 }, 'Orchard',
+    sign({ x: L.fence.x + 2, y: L.fence.y + 1, w: 6, h: 1 }, 'Orchard', 'Orchard boundary',
       ls.trees + ' trees on ' + acresText(plan.acres * 0.10) +
       ', planted on the edge so they cost no cropping land',
       c.fruit[0] ? { type: 'crop', id: c.fruit[0].id } : null);
@@ -712,23 +730,33 @@ FarmView.prototype.pick = function (px, py) {
 
 FarmView.prototype.resize = function () {
   if (!this.layout) return;
-  // measure the scroll viewport, not the frame, which sizes to its content
+  // Measure the column, not the scroller. The scroller is `fit-content` so it
+  // shrink-wraps whatever the canvas already is -- measuring that would feed
+  // the canvas its own width back and the map could never grow.
   let host = this.canvas.parentElement;
-  while (host && host.className.indexOf('mapscroll') < 0) host = host.parentElement;
-  const box = (host || this.canvas.parentElement).getBoundingClientRect();
+  while (host && host.className.indexOf('mapcol') < 0) host = host.parentElement;
+  let avail0;
+  if (host) {
+    const cs = getComputedStyle(host);
+    avail0 = host.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  } else {
+    avail0 = this.canvas.parentElement.getBoundingClientRect().width;
+  }
+  const box = { width: avail0 };
 
   const wpx = this.layout.w * TILE;
   const hpx = this.layout.h * TILE;
   const avail = Math.max(180, box.width - 34);        // less the ruler gutter
 
-  // Scale is a property of the screen, not of the farm: it is worked out from
-  // the widest board the game can produce (250 acres), so every farm on a given
-  // display uses the same zoom. Otherwise a 5-acre plot would render twice the
-  // size of a 10-acre one purely because it happened to fit at 2x. Whole
-  // numbers only -- a fractional upscale makes some source pixels double width
-  // and the art visibly wobbles.
-  const widestBoard = 80 * TILE;
-  this.scale = Math.max(1, Math.min(3, Math.floor(avail / widestBoard)));
+  // Fill the space this farm actually has: the largest whole-number zoom that
+  // fits the width. Whole numbers only -- a fractional upscale makes some
+  // source pixels double width and the art visibly wobbles. Capped at 2 so a
+  // small farm does not blow up into something you have to scroll around, and
+  // stepped back down if it would overflow the viewport height badly.
+  let z = Math.max(1, Math.min(2, Math.floor(avail / wpx)));
+  const roomH = Math.max(320, Math.min(window.innerHeight * 0.76, 900)) * 1.6;
+  if (z > 1 && hpx * z > roomH) z -= 1;
+  this.scale = z;
 
   this.canvas.width = wpx;
   this.canvas.height = hpx;
@@ -935,7 +963,9 @@ FarmView.prototype.render = function (dt) {
   this.features.slice()
     .sort(function (a, b) { return a.y - b.y; })
     .forEach(function (o) {
-      if (o.kind === 'animal' && o.face === -1) self.drawOnFlipped(o.sprite, o.x, o.y);
+      // Every animal sheet here is drawn facing left, so it is walking
+      // RIGHT that needs mirroring, not walking left.
+      if (o.kind === 'animal' && o.face === 1) self.drawOnFlipped(o.sprite, o.x, o.y);
       else self.drawOn(o.sprite, o.x, o.y);
     });
 

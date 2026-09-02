@@ -215,14 +215,15 @@ function drawSigns(layer, view) {
     b.type = 'button';
 
     // A different wooden board in front of each area, and a different set of
-    // boards on the next farm. Drawn as a border-image so the carved edge stays
-    // sharp and only the planking stretches to fit the name.
+    // boards on the next farm. The board is drawn whole at a fixed size, a few
+    // tiles wide -- stretching one to fit a long name pulled the planks apart.
     if (boards.length) {
       const board = boards[order[i % order.length]];
-      b.style.borderImageSource = 'url("' + board.src + '")';
-      b.style.borderImageSlice = '6 8 6 8';
-      b.style.borderImageWidth = '6px 8px 6px 8px';
-      b.style.borderImageRepeat = 'stretch';
+      const w = Math.round(3.4 * 16 * (view.scale || 1));
+      b.style.backgroundImage = 'url("' + board.src + '")';
+      b.style.width = w + 'px';
+      b.style.height = Math.round(w * board.h / board.w) + 'px';
+      b.style.fontSize = Math.max(6.5, 4.4 * (view.scale || 1)) + 'px';
       b.classList.add('woodsign');
     }
     // keep the plaque on the board even when its block hugs an edge
@@ -719,9 +720,13 @@ function renderBuild(body) {
     ph.appendChild(head);
     ph.appendChild(el('p', 'phaseblurb', phase.blurb));
 
+    // a two-column grid on a wide screen: step 1 left, step 2 right,
+    // step 3 back on the left, and so on down the year
+    const list = el('div', 'steplist');
     phase.steps.forEach(function (st) {
-      ph.appendChild(stepCard(st));
+      list.appendChild(stepCard(st));
     });
+    ph.appendChild(list);
     body.appendChild(ph);
   });
 }
@@ -1207,8 +1212,20 @@ function boot() {
     renderSetup();
     window.scrollTo(0, 0);
   };
+  // Resizing the window can change the zoom, and the signboards are sized in
+  // pixels from it -- they have to be redrawn or they end up out of proportion
+  // with the map.
+  let resizeTimer = null;
   window.addEventListener('resize', function () {
-    if (App.view) App.view.resize();
+    if (!App.view) return;
+    const was = App.view.scale;
+    App.view.resize();
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      if (!App.view) return;
+      const layer = document.querySelector('.signlayer');
+      if (layer && App.view.scale !== was) drawSigns(layer, App.view);
+    }, 120);
   });
 }
 

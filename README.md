@@ -87,12 +87,19 @@ to mark it done. The two are separate, so reading ahead never marks anything off
 
 **The board is the landing area.** The farm spans the full width of the page
 with the guide beneath it, so the map is what you see first and the build order
-is a scroll away.
+is a scroll away. It zooms to fill the width — up to 2× on a desktop, which is
+where most of the screen ends up going — and pans sideways once the farm is
+bigger than the panel.
 
-**Signboards.** Every major area carries a carved wooden nameplate — *Homestead*,
-*Animal yard*, *Wheat*, *Fodder*, *Farm pond*, *Orchard*. Just the name; hover
-for the size, the crop and the counts, click to open that guide. Each area gets a
-different board, and a new farm deals out a different set.
+**Two columns of steps on a wide screen.** Above 1150px the build order splits
+left and right and reads across: step 1 left, step 2 right, step 3 back on the
+left. Below that it is a single column.
+
+**Signboards.** Every major area carries a small wooden nameplate, a few tiles
+wide — *Home*, *Animals*, *Wheat*, *Fodder*, *Pond*, *Orchard*. Short names, so
+the board is never stretched to fit; hover for the full name, the size, the crop
+and the counts, and click to open that guide. Each area gets a different board,
+and a new farm deals out a different set.
 
 **One fence per farm.** The perimeter is picked from eight wooden fence styles
 and stays put for the life of that farm — reloading keeps it. Starting a new farm

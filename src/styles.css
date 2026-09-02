@@ -252,14 +252,14 @@ header.top .ctx {
 
 /* The board is the landing area: full width, with the guide beneath it. */
 .mapcol {
-  padding: 16px 20px 18px;
+  padding: 14px 12px 16px;
   border-bottom: 2px solid var(--edge);
   background: var(--paper-2);
   min-width: 0;
   overflow: hidden;
 }
 
-.mapcol > * { max-width: 1500px; margin-left: auto; margin-right: auto; }
+.mapcol > * { max-width: 1900px; margin-left: auto; margin-right: auto; }
 
 /* meters, tally and the auto-build control share one row under the board */
 .mapinfo {
@@ -356,6 +356,13 @@ header.top .ctx {
 
 .tabbody { padding: 22px 26px 90px; max-width: 78ch; margin: 0 auto; }
 
+@media (min-width: 1150px) {
+  .tabbody { max-width: 1400px; }
+  /* prose stays a comfortable measure even though the cards spread wider */
+  .tabbody > h3, .tabbody > .lede, .tabbody > p,
+  .tabbody > h4, .tabbody > table, .tabbody > .callout { max-width: 78ch; }
+}
+
 .tabbody h3 { font-size: 1.3rem; margin: 0 0 4px; }
 .tabbody h4 { font-size: 1.02rem; margin: 26px 0 6px; letter-spacing: .02em; }
 .tabbody p { margin: 0 0 12px; }
@@ -379,6 +386,19 @@ header.top .ctx {
 .phasehead .count { margin-left: auto; font-family: var(--mono); font-size: .78rem; color: var(--ink-faint); }
 
 .phaseblurb { color: var(--ink-soft); font-size: .92rem; margin: 8px 0 16px; }
+
+.steplist { display: block; }
+
+@media (min-width: 1150px) {
+  /* row-major, so the order reads 1 2 / 3 4 down the page rather than
+     filling one column before starting the next */
+  .steplist {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 14px;
+    align-items: start;
+  }
+}
 
 .step {
   border: 1px solid var(--rule);
@@ -737,7 +757,7 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 /* --- scrollable map board ------------------------------------------------ */
 
 .mapscroll {
-  max-height: min(64vh, 660px);
+  max-height: min(76vh, 900px);
   overflow: auto;
   border: 2px solid var(--edge);
   background: var(--paper-2);
@@ -814,20 +834,24 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 /* --- zone nameplates carved from the wooden signboard sheet -------------- */
 
 .sign.woodsign {
-  background: none;
-  border-style: solid;
-  border-width: 6px 8px 6px 8px;
-  padding: 1px 3px 2px;
+  /* the board at its own proportions, a few tiles wide, with the name sitting
+     on the plank rather than stretching it */
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  border: none;
+  padding: 0;
   box-shadow: none;
+  display: grid;
+  place-items: center;
+  letter-spacing: .04em;
+  line-height: 1;
   /* dark lettering reads as carved into the plank; cream vanished on the
      lighter boards */
   color: #33210f;
-  text-shadow: 0 1px 0 rgba(255, 232, 190, .45);
+  text-shadow: 0 1px 0 rgba(255, 232, 190, .4);
   image-rendering: pixelated;
   opacity: 1;
+  overflow: visible;
 }
 
-.sign.woodsign:not([disabled]):hover {
-  background: none;
-  filter: brightness(1.12);
-}
+.sign.woodsign:not([disabled]):hover { filter: brightness(1.14); }
