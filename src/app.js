@@ -219,11 +219,14 @@ function drawSigns(layer, view) {
     // tiles wide -- stretching one to fit a long name pulled the planks apart.
     if (boards.length) {
       const board = boards[order[i % order.length]];
-      const w = Math.round(3.4 * 16 * (view.scale || 1));
+      // At its own pixel size times the map zoom, a board comes out 34px wide
+      // against a 32px cow -- a marker planted in the field, not a banner over
+      // it. Anything larger and it covers the crops it is naming.
+      const z = view.scale || 1;
       b.style.backgroundImage = 'url("' + board.src + '")';
-      b.style.width = w + 'px';
-      b.style.height = Math.round(w * board.h / board.w) + 'px';
-      b.style.fontSize = Math.max(6.5, 4.4 * (view.scale || 1)) + 'px';
+      b.style.width = Math.round(board.w * z) + 'px';
+      b.style.height = Math.round(board.h * z) + 'px';
+      b.style.fontSize = Math.max(5.2, 4.4 * z) + 'px';
       b.classList.add('woodsign');
     }
     // keep the plaque on the board even when its block hugs an edge
@@ -579,6 +582,23 @@ function startGame() {
   window.scrollTo(0, 0);
 }
 
+// The zoom, and the signboards sized from it, follow the page width. Rather
+// than trust a resize event -- which browser zoom, orientation changes and
+// some embedded viewers do not reliably fire -- the frame loop just checks the
+// width a couple of times a second. It is a single integer comparison.
+let lastPageW = 0;
+
+function refitIfResized() {
+  const w = document.body.clientWidth;
+  if (!w || Math.abs(w - lastPageW) < 2) return;
+  lastPageW = w;
+  if (App.refit) App.refit();
+}
+
+function watchMapColumn() {
+  lastPageW = document.body.clientWidth;
+}
+
 function renderGame() {
   const root = $('#root');
   root.innerHTML = '';
@@ -688,6 +708,7 @@ function renderGame() {
   drawRuler(rulerX, rulerY, corner, cap, App.view);
   drawSigns(signs, App.view);
   wireMapPointer(cv, App.view);
+  watchMapColumn();
 }
 
 // --- build order tab ------------------------------------------------------
@@ -1170,9 +1191,12 @@ function boot() {
     }
 
     let last = performance.now();
+    let sinceCheck = 0;
     (function frame(now) {
       const dt = Math.min(64, now - last);
       last = now;
+      sinceCheck += dt;
+      if (sinceCheck > 400) { sinceCheck = 0; if (App.view) refitIfResized(); }
       if (App.view) App.view.render(dt);
       requestAnimationFrame(frame);
     })(last);
@@ -1216,7 +1240,7 @@ function boot() {
   // pixels from it -- they have to be redrawn or they end up out of proportion
   // with the map.
   let resizeTimer = null;
-  window.addEventListener('resize', function () {
+  function refit() {
     if (!App.view) return;
     const was = App.view.scale;
     App.view.resize();
@@ -1226,7 +1250,10 @@ function boot() {
       const layer = document.querySelector('.signlayer');
       if (layer && App.view.scale !== was) drawSigns(layer, App.view);
     }, 120);
-  });
+  }
+  window.addEventListener('resize', refit);
+
+  App.refit = refit;
 }
 
 document.addEventListener('DOMContentLoaded', boot);

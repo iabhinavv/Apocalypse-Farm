@@ -335,7 +335,7 @@ function zoneSigns(plan, L, done) {
   // A board is only a few tiles wide, so a long crop name will not sit on it.
   // Try the common name, then the local one (Bajra for pearl millet), then a
   // generic word. The full name always leads the hover text either way.
-  const fits = function (t) { return t && t.length <= 8; };
+  const fits = function (t) { return t && t.length <= 7; };
   const boardName = function (crop, fallback) {
     if (!crop) return fallback;
     if (fits(crop.name)) return crop.name;
