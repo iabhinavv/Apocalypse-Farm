@@ -756,13 +756,58 @@ FarmView.prototype.resize = function () {
   let z = Math.max(1, Math.min(2, Math.floor(avail / wpx)));
   const roomH = Math.max(320, Math.min(window.innerHeight * 0.76, 900)) * 1.6;
   if (z > 1 && hpx * z > roomH) z -= 1;
-  this.scale = z;
+  this.autoScale = z;
+  // a zoom the player set by wheel or button wins over the fitted one
+  this.scale = this.userZoom || z;
 
   this.canvas.width = wpx;
   this.canvas.height = hpx;
   this.canvas.style.width = Math.round(wpx * this.scale) + 'px';
   this.canvas.style.height = Math.round(hpx * this.scale) + 'px';
   this.ctx.imageSmoothingEnabled = false;
+};
+
+FarmView.ZOOM_MIN = 1;
+FarmView.ZOOM_MAX = 5;
+
+// Set the zoom, keeping whatever is under (ax, ay) -- client coordinates --
+// in the same place on screen afterwards, so zooming feels anchored on the
+// pointer rather than jumping to a corner.
+FarmView.prototype.setZoom = function (z, ax, ay) {
+  z = Math.max(FarmView.ZOOM_MIN, Math.min(FarmView.ZOOM_MAX, Math.round(z)));
+  if (z === this.scale) return false;
+
+  const scroller = this.scroller();
+  const box = this.canvas.getBoundingClientRect();
+  const sBox = scroller ? scroller.getBoundingClientRect() : box;
+
+  // where the anchor falls on the board (0..1), and where it sits in the view
+  const fx = (ax == null ? sBox.left + sBox.width / 2 : ax - box.left) / box.width;
+  const fy = (ay == null ? sBox.top + sBox.height / 2 : ay - box.top) / box.height;
+  const holdX = (ax == null ? sBox.width / 2 : ax - sBox.left);
+  const holdY = (ay == null ? sBox.height / 2 : ay - sBox.top);
+
+  this.userZoom = z;
+  this.resize();
+
+  if (scroller) {
+    const now = this.canvas.getBoundingClientRect();
+    scroller.scrollLeft = Math.max(0, fx * now.width - holdX);
+    scroller.scrollTop = Math.max(0, fy * now.height - holdY);
+  }
+  return true;
+};
+
+FarmView.prototype.fitZoom = function () {
+  this.userZoom = null;
+  this.resize();
+  return true;
+};
+
+FarmView.prototype.scroller = function () {
+  let n = this.canvas.parentElement;
+  while (n && n.className.indexOf('mapscroll') < 0) n = n.parentElement;
+  return n;
 };
 
 // --- terrain --------------------------------------------------------------

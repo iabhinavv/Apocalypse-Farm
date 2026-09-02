@@ -757,16 +757,22 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 /* --- scrollable map board ------------------------------------------------ */
 
 .mapscroll {
-  max-height: min(76vh, 900px);
+  /* A fixed viewport onto the board: the panel is the same height whatever the
+     farm or the zoom, so nothing below it jumps around. The board scrolls
+     inside it -- sideways once the farm is wider than the panel. */
+  height: clamp(340px, 68vh, 760px);
   overflow: auto;
   border: 2px solid var(--edge);
   background: var(--paper-2);
   overscroll-behavior: contain;
-  /* shrink-wrap the board and centre it, so a small farm reads as a centred
-     plan rather than a small map adrift in a large empty panel */
   width: fit-content;
   max-width: 100%;
   margin: 0 auto;
+  /* `safe` keeps the top-left reachable when the board is bigger than the
+     panel, which plain centring would cut off */
+  display: grid;
+  align-content: safe center;
+  justify-content: safe center;
 }
 
 .mapgrid { width: max-content; }
@@ -855,3 +861,30 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 }
 
 .sign.woodsign:not([disabled]):hover { filter: brightness(1.14); }
+
+/* --- zoom control -------------------------------------------------------- */
+
+.zoomctl {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 4px;
+}
+
+.zoomctl > .smallcaps { font-size: .7rem; }
+
+.zoombtn {
+  background: var(--card-2);
+  border: 1px solid var(--edge);
+  font-family: var(--mono);
+  font-size: .78rem;
+  line-height: 1;
+  min-width: 22px;
+  padding: 3px 5px;
+}
+
+.zoombtn.wide { min-width: auto; padding: 3px 9px; font-variant: small-caps; letter-spacing: .07em; }
+.zoombtn:hover:not([disabled]) { background: var(--paper-2); }
+.zoombtn[disabled] { opacity: .38; cursor: not-allowed; }
+
+.zoomlabel { font-family: var(--mono); font-size: .78rem; min-width: 2.2ch; text-align: center; }

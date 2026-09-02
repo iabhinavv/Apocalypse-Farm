@@ -95,11 +95,17 @@ bigger than the panel.
 left and right and reads across: step 1 left, step 2 right, step 3 back on the
 left. Below that it is a single column.
 
-**Signboards.** Every major area carries a small wooden nameplate, a few tiles
-wide — *Home*, *Animals*, *Wheat*, *Fodder*, *Pond*, *Orchard*. Short names, so
-the board is never stretched to fit; hover for the full name, the size, the crop
-and the counts, and click to open that guide. Each area gets a different board,
-and a new farm deals out a different set.
+**Signboards.** Every major area carries a wooden nameplate smaller than a cow —
+*Home*, *Animals*, *Wheat*, *Fodder*, *Pond*, *Orchard*. Short names, so the
+board is never stretched to fit; hover for the full name, the size, the crop and
+the counts, and click to open that guide. Each area gets a different board, and
+a new farm deals out a different set.
+
+**Zoom.** The wheel zooms the board in and out from 1× to 5×, anchored on the
+pointer, and there are `−` / `+` / `Fit` buttons under the map. Shift-wheel pans
+sideways instead. The panel itself is a fixed height whatever the farm or the
+zoom, so nothing below it shifts about; the board scrolls inside it, sideways
+once the farm is wider than the panel.
 
 **One fence per farm.** The perimeter is picked from eight wooden fence styles
 and stays put for the life of that farm — reloading keeps it. Starting a new farm

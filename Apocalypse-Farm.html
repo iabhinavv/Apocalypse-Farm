@@ -765,16 +765,22 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 /* --- scrollable map board ------------------------------------------------ */
 
 .mapscroll {
-  max-height: min(76vh, 900px);
+  /* A fixed viewport onto the board: the panel is the same height whatever the
+     farm or the zoom, so nothing below it jumps around. The board scrolls
+     inside it -- sideways once the farm is wider than the panel. */
+  height: clamp(340px, 68vh, 760px);
   overflow: auto;
   border: 2px solid var(--edge);
   background: var(--paper-2);
   overscroll-behavior: contain;
-  /* shrink-wrap the board and centre it, so a small farm reads as a centred
-     plan rather than a small map adrift in a large empty panel */
   width: fit-content;
   max-width: 100%;
   margin: 0 auto;
+  /* `safe` keeps the top-left reachable when the board is bigger than the
+     panel, which plain centring would cut off */
+  display: grid;
+  align-content: safe center;
+  justify-content: safe center;
 }
 
 .mapgrid { width: max-content; }
@@ -863,6 +869,33 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 }
 
 .sign.woodsign:not([disabled]):hover { filter: brightness(1.14); }
+
+/* --- zoom control -------------------------------------------------------- */
+
+.zoomctl {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 4px;
+}
+
+.zoomctl > .smallcaps { font-size: .7rem; }
+
+.zoombtn {
+  background: var(--card-2);
+  border: 1px solid var(--edge);
+  font-family: var(--mono);
+  font-size: .78rem;
+  line-height: 1;
+  min-width: 22px;
+  padding: 3px 5px;
+}
+
+.zoombtn.wide { min-width: auto; padding: 3px 9px; font-variant: small-caps; letter-spacing: .07em; }
+.zoombtn:hover:not([disabled]) { background: var(--paper-2); }
+.zoombtn[disabled] { opacity: .38; cursor: not-allowed; }
+
+.zoomlabel { font-family: var(--mono); font-size: .78rem; min-width: 2.2ch; text-align: center; }
 
 </style>
 </head>
@@ -4531,13 +4564,58 @@ FarmView.prototype.resize = function () {
   let z = Math.max(1, Math.min(2, Math.floor(avail / wpx)));
   const roomH = Math.max(320, Math.min(window.innerHeight * 0.76, 900)) * 1.6;
   if (z > 1 && hpx * z > roomH) z -= 1;
-  this.scale = z;
+  this.autoScale = z;
+  // a zoom the player set by wheel or button wins over the fitted one
+  this.scale = this.userZoom || z;
 
   this.canvas.width = wpx;
   this.canvas.height = hpx;
   this.canvas.style.width = Math.round(wpx * this.scale) + 'px';
   this.canvas.style.height = Math.round(hpx * this.scale) + 'px';
   this.ctx.imageSmoothingEnabled = false;
+};
+
+FarmView.ZOOM_MIN = 1;
+FarmView.ZOOM_MAX = 5;
+
+// Set the zoom, keeping whatever is under (ax, ay) -- client coordinates --
+// in the same place on screen afterwards, so zooming feels anchored on the
+// pointer rather than jumping to a corner.
+FarmView.prototype.setZoom = function (z, ax, ay) {
+  z = Math.max(FarmView.ZOOM_MIN, Math.min(FarmView.ZOOM_MAX, Math.round(z)));
+  if (z === this.scale) return false;
+
+  const scroller = this.scroller();
+  const box = this.canvas.getBoundingClientRect();
+  const sBox = scroller ? scroller.getBoundingClientRect() : box;
+
+  // where the anchor falls on the board (0..1), and where it sits in the view
+  const fx = (ax == null ? sBox.left + sBox.width / 2 : ax - box.left) / box.width;
+  const fy = (ay == null ? sBox.top + sBox.height / 2 : ay - box.top) / box.height;
+  const holdX = (ax == null ? sBox.width / 2 : ax - sBox.left);
+  const holdY = (ay == null ? sBox.height / 2 : ay - sBox.top);
+
+  this.userZoom = z;
+  this.resize();
+
+  if (scroller) {
+    const now = this.canvas.getBoundingClientRect();
+    scroller.scrollLeft = Math.max(0, fx * now.width - holdX);
+    scroller.scrollTop = Math.max(0, fy * now.height - holdY);
+  }
+  return true;
+};
+
+FarmView.prototype.fitZoom = function () {
+  this.userZoom = null;
+  this.resize();
+  return true;
+};
+
+FarmView.prototype.scroller = function () {
+  let n = this.canvas.parentElement;
+  while (n && n.className.indexOf('mapscroll') < 0) n = n.parentElement;
+  return n;
 };
 
 // --- terrain --------------------------------------------------------------
@@ -4967,6 +5045,66 @@ function shuffled(n, seed) {
   return a;
 }
 
+// Zoom the board in and out. The wheel works over the map itself, anchored on
+// the pointer; the buttons step it, and Fit returns to the size that suits the
+// window.
+function zoomControls(scroller) {
+  const wrap = el('span', 'zoomctl');
+  const label = el('span', 'zoomlabel');
+
+  function refresh() {
+    if (!App.view) return;
+    label.textContent = App.view.scale + '\u00d7';
+    out.disabled = App.view.scale <= FarmView.ZOOM_MIN;
+    inn.disabled = App.view.scale >= FarmView.ZOOM_MAX;
+  }
+
+  function apply(fn) {
+    if (!App.view) return;
+    fn();
+    const layer = document.querySelector('.signlayer');
+    if (layer) drawSigns(layer, App.view);
+    refresh();
+  }
+
+  const out = el('button', 'zoombtn', '\u2212');
+  out.type = 'button';
+  out.title = 'Zoom out';
+  out.onclick = function () { apply(function () { App.view.setZoom(App.view.scale - 1); }); };
+
+  const inn = el('button', 'zoombtn', '+');
+  inn.type = 'button';
+  inn.title = 'Zoom in';
+  inn.onclick = function () { apply(function () { App.view.setZoom(App.view.scale + 1); }); };
+
+  const fit = el('button', 'zoombtn wide', 'Fit');
+  fit.type = 'button';
+  fit.title = 'Back to the size that suits the window';
+  fit.onclick = function () { apply(function () { App.view.fitZoom(); }); };
+
+  wrap.appendChild(el('span', 'smallcaps', 'zoom'));
+  wrap.appendChild(out);
+  wrap.appendChild(label);
+  wrap.appendChild(inn);
+  wrap.appendChild(fit);
+
+  if (scroller) {
+    scroller.addEventListener('wheel', function (e) {
+      if (!App.view) return;
+      // the board is a map panel, so the wheel zooms it rather than scrolling
+      // the page past it -- shift+wheel still pans sideways
+      if (e.shiftKey) return;
+      e.preventDefault();
+      const step = e.deltaY < 0 ? 1 : -1;
+      apply(function () { App.view.setZoom(App.view.scale + step, e.clientX, e.clientY); });
+    }, { passive: false });
+  }
+
+  refresh();
+  App.zoomRefresh = refresh;
+  return wrap;
+}
+
 function drawSigns(layer, view) {
   layer.innerHTML = '';
   const L = view.layout;
@@ -4983,14 +5121,15 @@ function drawSigns(layer, view) {
     // tiles wide -- stretching one to fit a long name pulled the planks apart.
     if (boards.length) {
       const board = boards[order[i % order.length]];
-      // At its own pixel size times the map zoom, a board comes out 34px wide
-      // against a 32px cow -- a marker planted in the field, not a banner over
-      // it. Anything larger and it covers the crops it is naming.
+      // 24px against a 32px cow: a marker planted in the field, not a banner
+      // over it. The board art is 34px, so it is drawn below its own size --
+      // it is a solid block of colour and reads bigger than the animal does.
       const z = view.scale || 1;
+      const w = Math.round(24 * z);
       b.style.backgroundImage = 'url("' + board.src + '")';
-      b.style.width = Math.round(board.w * z) + 'px';
-      b.style.height = Math.round(board.h * z) + 'px';
-      b.style.fontSize = Math.max(5.2, 4.4 * z) + 'px';
+      b.style.width = w + 'px';
+      b.style.height = Math.round(w * board.h / board.w) + 'px';
+      b.style.fontSize = Math.max(5, 3.7 * z) + 'px';
       b.classList.add('woodsign');
     }
     // keep the plaque on the board even when its block hugs an edge
@@ -5470,6 +5609,8 @@ function renderGame() {
   App.view = new FarmView(cv, App.atlas);
   App.view.setPlan(App.plan, App.done);
   drawRuler(rulerX, rulerY, corner, cap, App.view);
+  // after drawRuler: it rewrites the caption's contents
+  cap.appendChild(zoomControls(scroller));
   drawSigns(signs, App.view);
   wireMapPointer(cv, App.view);
   watchMapColumn();
@@ -6013,6 +6154,7 @@ function boot() {
       if (!App.view) return;
       const layer = document.querySelector('.signlayer');
       if (layer && App.view.scale !== was) drawSigns(layer, App.view);
+      if (App.zoomRefresh) App.zoomRefresh();
     }, 120);
   }
   window.addEventListener('resize', refit);
