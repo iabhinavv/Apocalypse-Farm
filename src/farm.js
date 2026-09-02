@@ -175,7 +175,7 @@ function featuresFor(plan, L, done) {
   // and the interface lists what is outstanding.
   const mark = function (x, y, label, stepId, note) {
     f.push({
-      x: x, y: y, sprite: 'signpost', kind: 'marker', awaiting: label,
+      x: x, y: y, sprite: 'signboard_new_' + Math.floor(Math.random() * 9), kind: 'marker', awaiting: label,
       tip: label + (note ? ' — ' + note : '') + ' · no sprite in the packs yet',
       action: stepId ? { type: 'step', id: stepId } : null
     });
@@ -198,7 +198,7 @@ function featuresFor(plan, L, done) {
   }
 
   if (has('soil-test')) {
-    put(hx + hw - 1, hy, 'signpost', 'prop',
+    put(hx + hw - 1, hy, 'signboard_new_' + Math.floor(Math.random() * 9), 'prop',
       'Soil test marker — ' + plan.primarySoil.name + ', pH ' + plan.primarySoil.ph,
       { type: 'step', id: 'soil-test' });
   }
@@ -493,6 +493,9 @@ FarmView.prototype.setPlan = function (plan, done) {
   this.plan = plan;
   this.done = done || [];
   this.layout = layoutFarm(plan);
+  if (fresh || !this.fenceStyle) {
+    this.fenceStyle = 'fence_new_' + Math.floor(Math.random() * 9);
+  }
   this.metrics = farmMetrics(plan, this.layout);
   if (fresh) {
     this.plantedAt = {};
@@ -690,20 +693,21 @@ FarmView.prototype.paintFence = function () {
   const F = this.layout.fence;
   const gate = F.x + Math.floor(F.w / 2);
   const top = F.y, bot = F.y + F.h - 1;
+  const style = this.fenceStyle || 'fence_new_0';
   for (let x = F.x; x < F.x + F.w; x++) {
-    this.draw('fence_m', x * TILE, top * TILE);
-    if (x !== gate && x !== gate + 1) this.draw('fence_m', x * TILE, bot * TILE);
+    this.draw(style, x * TILE, top * TILE);
+    if (x !== gate && x !== gate + 1) this.draw(style, x * TILE, bot * TILE);
   }
   for (let y = top + 1; y < bot; y++) {
-    this.draw('fence_v', F.x * TILE, y * TILE);
-    this.draw('fence_v', (F.x + F.w - 1) * TILE, y * TILE);
+    this.draw(style, F.x * TILE, y * TILE);
+    this.draw(style, (F.x + F.w - 1) * TILE, y * TILE);
   }
-  this.draw('fence_l', F.x * TILE, top * TILE);
-  this.draw('fence_r', (F.x + F.w - 1) * TILE, top * TILE);
-  this.draw('fence_l', F.x * TILE, bot * TILE);
-  this.draw('fence_r', (F.x + F.w - 1) * TILE, bot * TILE);
-  this.draw('fence_post', (gate - 1) * TILE, bot * TILE);
-  this.draw('fence_post', (gate + 2) * TILE, bot * TILE);
+  this.draw(style, F.x * TILE, top * TILE);
+  this.draw(style, (F.x + F.w - 1) * TILE, top * TILE);
+  this.draw(style, F.x * TILE, bot * TILE);
+  this.draw(style, (F.x + F.w - 1) * TILE, bot * TILE);
+  this.draw(style, (gate - 1) * TILE, bot * TILE);
+  this.draw(style, (gate + 2) * TILE, bot * TILE);
 };
 
 // --- the farmer -----------------------------------------------------------

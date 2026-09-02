@@ -370,6 +370,24 @@ def pack(items, width=512, pad=1):
     return manifest, y + shelf + pad
 
 
+# ===========================================================================
+# New Assets (fences and signboards)
+# ===========================================================================
+
+for i in range(9):
+    try:
+        im = load(f"new_assets/fence_new_{i}.png")
+        sprites[f"fence_new_{i}"] = fit(im, 16)
+    except Exception:
+        pass
+        
+for i in range(9):
+    try:
+        im = load(f"new_assets/signboard_new_{i}.png")
+        sprites[f"signboard_new_{i}"] = fit(im, 32)
+    except Exception:
+        pass
+
 manifest, height = pack(sprites)
 atlas = Image.new("RGBA", (512, height), (0, 0, 0, 0))
 for name, (x, y, w, h) in manifest.items():
