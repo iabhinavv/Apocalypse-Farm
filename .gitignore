@@ -1,0 +1,33 @@
+# ---------------------------------------------------------------------------
+# The asset packs must not be published.
+#
+# Super Retro Ranch (free tier) and Cute Fantasy (free) both say, in as many
+# words, that you may not redistribute the assets — modified or not. Pushing
+# the pack folders to a public repository is redistribution.
+#
+# Using the art inside the game is fine, and that is what ships: the built
+# Apocalypse-Farm.html carries only the cropped sprites it actually draws,
+# baked into a single base64 atlas.
+#
+# These are ignored going forward. Files already committed stay in the history
+# until they are untracked — see README, "Publishing this".
+# ---------------------------------------------------------------------------
+
+Cute_Fantasy_Free/
+Farm RPG FREE 16x16 - Tiny Asset Pack/
+SuperRetroRanch_FreeTier_v32/
+Valley Ruin Asset Pack V0.3/
+craftpix-net-*/
+honey-elements-set/
+assets/
+*.webp
+signboards.jpg
+fences.jpg
+view_images.html
+
+# build intermediates
+build/
+src/gen-atlas.js
+
+# macOS
+.DS_Store

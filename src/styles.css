@@ -4,16 +4,16 @@
    -------------------------------------------------------------------------- */
 
 :root {
-  --paper: #e9dcba;
-  --paper-2: #ddcda6;
-  --card: #f6eed8;
-  --card-2: #efe3c6;
+  --paper: #f4ecd9;
+  --paper-2: #eae0c6;
+  --card: #fbf6e8;
+  --card-2: #f4ecd8;
   --ink: #3a2b1c;
   --ink-soft: #6d5a44;
   --ink-faint: #94826a;
-  --rule: #c9b287;
-  --edge: #8a6a45;
-  --edge-dark: #5f472d;
+  --rule: #d5c39c;
+  --edge: #a8865c;
+  --edge-dark: #6d5336;
   --green: #4f8a3d;
   --green-deep: #2f5c2a;
   --gold: #b8791b;
@@ -25,25 +25,9 @@
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #211b15;
-    --paper-2: #191410;
-    --card: #2d2419;
-    --card-2: #251d14;
-    --ink: #ecdfc0;
-    --ink-soft: #b6a488;
-    --ink-faint: #8a7a62;
-    --rule: #4c3c2a;
-    --edge: #6d5537;
-    --edge-dark: #3d2f1f;
-    --green: #6faa4c;
-    --gold: #d19a34;
-    --rust: #c25e42;
-    --sky: #4e94b8;
-    --shadow: rgba(0, 0, 0, .5);
-  }
-}
+/* Light throughout. A dark variant made the ruler gutter and the ground
+   around the farm read as near-black, which fought the pixel art. */
+
 
 * { box-sizing: border-box; }
 
@@ -264,25 +248,30 @@ header.top .ctx {
 
 /* --- main layout -------------------------------------------------------- */
 
-.game {
-  display: grid;
-  grid-template-columns: minmax(380px, 46%) 1fr;
-  gap: 0;
-  align-items: start;
-}
+.game { display: block; }
 
+/* The board is the landing area: full width, with the guide beneath it. */
 .mapcol {
-  position: sticky;
-  top: 51px;
-  padding: 16px;
-  border-right: 2px solid var(--edge);
+  padding: 16px 20px 18px;
+  border-bottom: 2px solid var(--edge);
   background: var(--paper-2);
-  min-height: calc(100vh - 51px);
-  /* grid items default to min-width:auto, which lets the wide board push the
-     column past its 42% track and stops the map ever scrolling sideways */
   min-width: 0;
   overflow: hidden;
 }
+
+.mapcol > * { max-width: 1500px; margin-left: auto; margin-right: auto; }
+
+/* meters, tally and the auto-build control share one row under the board */
+.mapinfo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 34px;
+  align-items: flex-start;
+  margin-top: 12px;
+}
+
+.mapinfo .meters { margin-top: 0; flex: 1 1 340px; min-width: 300px; max-width: 460px; }
+.mapinfo .side { flex: 1 1 300px; min-width: 260px; }
 
 .mapframe {
   border: 3px solid var(--edge-dark);
@@ -343,7 +332,7 @@ header.top .ctx {
   border-bottom: 2px solid var(--edge);
   background: var(--paper-2);
   position: sticky;
-  top: 51px;
+  top: 47px;
   z-index: 30;
 }
 
@@ -365,7 +354,7 @@ header.top .ctx {
   box-shadow: inset 0 -3px 0 var(--green-deep);
 }
 
-.tabbody { padding: 22px 26px; max-width: 78ch; }
+.tabbody { padding: 22px 26px 90px; max-width: 78ch; margin: 0 auto; }
 
 .tabbody h3 { font-size: 1.3rem; margin: 0 0 4px; }
 .tabbody h4 { font-size: 1.02rem; margin: 26px 0 6px; letter-spacing: .02em; }
@@ -562,15 +551,12 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 .soilnote { border-left: 3px solid var(--green); background: var(--card-2); padding: 9px 14px; margin: 8px 0; font-size: .92rem; }
 .soilnote b { font-variant: small-caps; letter-spacing: .08em; color: var(--green-deep); }
 
-@media (prefers-color-scheme: dark) { .soilnote b { color: var(--green); } }
-
 /* --- responsive --------------------------------------------------------- */
 
 @media (max-width: 940px) {
-  .game { grid-template-columns: 1fr; }
-  .mapcol { position: static; min-height: 0; border-right: none; border-bottom: 2px solid var(--edge); }
-  .tabs { top: 0; }
-  .tabbody { padding: 18px; }
+  .mapcol { padding: 12px 12px 14px; }
+  .tabbody { padding: 18px 16px 80px; }
+  .mapinfo { gap: 10px 18px; }
 }
 
 @media print {
@@ -743,10 +729,6 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 
 :root { --sheet: #fbf8f1; --sheet-2: #f2ede1; }
 
-@media (prefers-color-scheme: dark) {
-  :root { --sheet: #241d16; --sheet-2: #1d1711; }
-}
-
 .drawer { background: var(--sheet); }
 .drawerhead { background: var(--sheet-2); }
 .drawer .callout { background: var(--sheet-2); }
@@ -755,11 +737,16 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 /* --- scrollable map board ------------------------------------------------ */
 
 .mapscroll {
-  max-height: min(68vh, 680px);
+  max-height: min(64vh, 660px);
   overflow: auto;
   border: 2px solid var(--edge);
   background: var(--paper-2);
   overscroll-behavior: contain;
+  /* shrink-wrap the board and centre it, so a small farm reads as a centred
+     plan rather than a small map adrift in a large empty panel */
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .mapgrid { width: max-content; }
@@ -822,4 +809,25 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
   background: var(--rust);
   border-color: var(--rust);
   color: #fff4e6;
+}
+
+/* --- zone nameplates carved from the wooden signboard sheet -------------- */
+
+.sign.woodsign {
+  background: none;
+  border-style: solid;
+  border-width: 6px 8px 6px 8px;
+  padding: 1px 3px 2px;
+  box-shadow: none;
+  /* dark lettering reads as carved into the plank; cream vanished on the
+     lighter boards */
+  color: #33210f;
+  text-shadow: 0 1px 0 rgba(255, 232, 190, .45);
+  image-rendering: pixelated;
+  opacity: 1;
+}
+
+.sign.woodsign:not([disabled]):hover {
+  background: none;
+  filter: brightness(1.12);
 }

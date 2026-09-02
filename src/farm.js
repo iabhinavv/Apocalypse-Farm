@@ -14,7 +14,9 @@
 
 const TILE = 16;
 const PAD_TOP = 3;          // headroom rows above the fence, for tall sprites
-const RING = 2;             // boundary planting ring inside the fence
+// Boundary planting ring inside the fence. Three tiles, not two: the orchard
+// trees are up to 53px wide, and at two they reached into the cropped blocks.
+const RING = 3;
 const GROW_MS = 260;        // per crop growth stage
 
 function cropSprite(crop) {
@@ -175,7 +177,7 @@ function featuresFor(plan, L, done) {
   // and the interface lists what is outstanding.
   const mark = function (x, y, label, stepId, note) {
     f.push({
-      x: x, y: y, sprite: 'signboard_new_' + Math.floor(Math.random() * 9), kind: 'marker', awaiting: label,
+      x: x, y: y, sprite: 'signpost', kind: 'marker', awaiting: label,
       tip: label + (note ? ' — ' + note : '') + ' · no sprite in the packs yet',
       action: stepId ? { type: 'step', id: stepId } : null
     });
@@ -198,7 +200,7 @@ function featuresFor(plan, L, done) {
   }
 
   if (has('soil-test')) {
-    put(hx + hw - 1, hy, 'signboard_new_' + Math.floor(Math.random() * 9), 'prop',
+    put(hx + hw - 1, hy, 'signpost', 'prop',
       'Soil test marker — ' + plan.primarySoil.name + ', pH ' + plan.primarySoil.ph,
       { type: 'step', id: 'soil-test' });
   }
@@ -487,16 +489,30 @@ FarmView.prototype.drawOn = function (name, tx, ty) {
   if (b) this.draw(name, b.x, b.y);
 };
 
+// same, but flipped horizontally, so a wandering animal faces where it walks
+FarmView.prototype.drawOnFlipped = function (name, tx, ty) {
+  const r = ATLAS[name];
+  const b = this.spriteBox(name, tx, ty);
+  if (!r || !b) return;
+  const ctx = this.ctx;
+  ctx.save();
+  ctx.translate(Math.round(b.x + b.w), Math.round(b.y));
+  ctx.scale(-1, 1);
+  ctx.drawImage(this.img, r[0], r[1], r[2], r[3], 0, 0, r[2], r[3]);
+  ctx.restore();
+};
+
 FarmView.prototype.setPlan = function (plan, done) {
   const fresh = !this.plan || this.plan.acres !== plan.acres ||
     this.plan.state.id !== plan.state.id;
   this.plan = plan;
   this.done = done || [];
   this.layout = layoutFarm(plan);
-  if (fresh || !this.fenceStyle) {
-    this.fenceStyle = 'fence_new_' + Math.floor(Math.random() * 9);
-  }
   this.metrics = farmMetrics(plan, this.layout);
+  // one fence style for the whole farm, re-rolled only when a new farm starts
+  this.fence = (typeof FENCE_STYLES === 'number' && FENCE_STYLES > 0)
+    ? 'fence' + ((plan.seed || 1) % FENCE_STYLES) + '_'
+    : null;
   if (fresh) {
     this.plantedAt = {};
     this.farmer.x = this.farmer.tx = this.layout.blocks.home.x + 4;
@@ -514,8 +530,57 @@ FarmView.prototype.setPlan = function (plan, done) {
     if (!(k in self.plantedAt)) self.plantedAt[k] = now + p.seed * 4;
   });
 
+  // every animal drifts around the spot it was placed on, penned to its yard
+  const yard = this.layout.blocks.animals;
+  this.features.forEach(function (o) {
+    if (o.kind !== 'animal') return;
+    o.hx = o.x; o.hy = o.y;          // home tile
+    o.ox = 0; o.oy = 0;              // current offset, in tiles
+    o.tox = 0; o.toy = 0;            // where it is heading
+    o.wait = 400 + Math.random() * 3200;
+    o.face = 1;
+    o.pen = {
+      x0: yard.x + 0.5, x1: yard.x + yard.w - 1.5,
+      y0: yard.y, y1: yard.y + yard.h - 1
+    };
+  });
+
   this.buildTargets();
   this.resize();
+};
+
+// Animals wander a couple of tiles around their home spot: two or three
+// sideways, one or two up and down, with a pause between moves. Kept inside
+// the yard, and inside the fence, whatever the block size.
+FarmView.prototype.stepAnimals = function (dt) {
+  const self = this;
+  this.features.forEach(function (o) {
+    if (o.kind !== 'animal' || o.hx === undefined) return;
+    const dx = o.tox - o.ox, dy = o.toy - o.oy;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist < 0.04) {
+      o.ox = o.tox; o.oy = o.toy;
+      o.wait -= dt;
+      if (o.wait <= 0) {
+        o.tox = (Math.random() * 5 - 2.5);      // +/- 2.5 tiles sideways
+        o.toy = (Math.random() * 3 - 1.5);      // +/- 1.5 tiles up and down
+        o.wait = 900 + Math.random() * 4000;
+      }
+    } else {
+      const speed = 0.55 * dt / 1000;
+      o.ox += dx / dist * Math.min(speed, dist);
+      o.oy += dy / dist * Math.min(speed, dist);
+      if (Math.abs(dx) > 0.05) o.face = dx > 0 ? 1 : -1;
+    }
+    const p = o.pen;
+    o.x = Math.max(p.x0, Math.min(p.x1, o.hx + o.ox));
+    o.y = Math.max(p.y0, Math.min(p.y1, o.hy + o.oy));
+    if (o.target) {                              // keep hover in step
+      const b = self.spriteBox(o.sprite, o.x, o.y);
+      if (b) { o.target.x = b.x; o.target.y = b.y; }
+    }
+  });
 };
 
 // ---------------------------------------------------------------------------
@@ -603,7 +668,10 @@ FarmView.prototype.buildTargets = function () {
   // everything standing on the farm
   this.features.forEach(function (o) {
     const b = self.spriteBox(o.sprite, o.x, o.y);
-    if (b && o.tip) t.push({ x: b.x, y: b.y, w: b.w, h: b.h, tip: o.tip, action: o.action });
+    if (!b || !o.tip) return;
+    const entry = { x: b.x, y: b.y, w: b.w, h: b.h, tip: o.tip, action: o.action };
+    if (o.kind === 'animal') o.target = entry;   // stepAnimals keeps it in step
+    t.push(entry);
   });
 
   this.targets = t;
@@ -652,12 +720,15 @@ FarmView.prototype.resize = function () {
   const wpx = this.layout.w * TILE;
   const hpx = this.layout.h * TILE;
   const avail = Math.max(180, box.width - 34);        // less the ruler gutter
-  const fit = avail / wpx;
 
-  // Never shrink below 1: a big farm gets a bigger board that you pan around,
-  // instead of everything scaling down until the animals are unreadable. Whole
-  // numbers only, because a half-pixel upscale makes the art wobble.
-  this.scale = fit >= 2 ? Math.min(3, Math.floor(fit)) : 1;
+  // Scale is a property of the screen, not of the farm: it is worked out from
+  // the widest board the game can produce (250 acres), so every farm on a given
+  // display uses the same zoom. Otherwise a 5-acre plot would render twice the
+  // size of a 10-acre one purely because it happened to fit at 2x. Whole
+  // numbers only -- a fractional upscale makes some source pixels double width
+  // and the art visibly wobbles.
+  const widestBoard = 80 * TILE;
+  this.scale = Math.max(1, Math.min(3, Math.floor(avail / widestBoard)));
 
   this.canvas.width = wpx;
   this.canvas.height = hpx;
@@ -693,21 +764,25 @@ FarmView.prototype.paintFence = function () {
   const F = this.layout.fence;
   const gate = F.x + Math.floor(F.w / 2);
   const top = F.y, bot = F.y + F.h - 1;
-  const style = this.fenceStyle || 'fence_new_0';
+  const p = this.fence;
+  const self = this;
+
+  // The wooden fences stand taller than a tile, so they are anchored on the
+  // bottom of their tile and allowed to overhang upward, the way the trees and
+  // the buildings are. The older 16px set is drawn at the tile origin instead.
+  const put = p
+    ? function (part, x, y) { self.drawOn(p + part, x, y); }
+    : function (part, x, y) { self.draw('fence_' + part, x * TILE, y * TILE); };
+
   for (let x = F.x; x < F.x + F.w; x++) {
-    this.draw(style, x * TILE, top * TILE);
-    if (x !== gate && x !== gate + 1) this.draw(style, x * TILE, bot * TILE);
+    const part = x === F.x ? 'l' : (x === F.x + F.w - 1 ? 'r' : 'm');
+    put(part, x, top);
+    if (x !== gate && x !== gate + 1) put(part, x, bot);   // leave the gateway
   }
   for (let y = top + 1; y < bot; y++) {
-    this.draw(style, F.x * TILE, y * TILE);
-    this.draw(style, (F.x + F.w - 1) * TILE, y * TILE);
+    put('l', F.x, y);
+    put('r', F.x + F.w - 1, y);
   }
-  this.draw(style, F.x * TILE, top * TILE);
-  this.draw(style, (F.x + F.w - 1) * TILE, top * TILE);
-  this.draw(style, F.x * TILE, bot * TILE);
-  this.draw(style, (F.x + F.w - 1) * TILE, bot * TILE);
-  this.draw(style, (gate - 1) * TILE, bot * TILE);
-  this.draw(style, (gate + 2) * TILE, bot * TILE);
 };
 
 // --- the farmer -----------------------------------------------------------
@@ -856,9 +931,13 @@ FarmView.prototype.render = function (dt) {
   });
 
   // everything standing, back to front
+  this.stepAnimals(dt);
   this.features.slice()
     .sort(function (a, b) { return a.y - b.y; })
-    .forEach(function (o) { self.drawOn(o.sprite, o.x, o.y); });
+    .forEach(function (o) {
+      if (o.kind === 'animal' && o.face === -1) self.drawOnFlipped(o.sprite, o.x, o.y);
+      else self.drawOn(o.sprite, o.x, o.y);
+    });
 
   this.stepFarmer(dt);
   this.drawFarmer();

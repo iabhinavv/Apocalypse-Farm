@@ -7,7 +7,35 @@ itself as you tick steps off.
 
 **Play it:** double-click `Apocalypse-Farm.html`. That is the whole game — one
 self-contained file, no server, no internet, no dependencies. Progress saves to
-the browser.
+the browser. `index.html` just redirects to it, so the folder also works as a
+static site root.
+
+---
+
+## ⚠ Publishing this
+
+**The asset packs must not be pushed to a public repository.** Super Retro Ranch
+(free tier) and Cute Fantasy (free) both state that you may not redistribute the
+assets, modified or not. Using the art inside the game is fine — that is exactly
+what the licences are for — but shipping the pack folders is redistribution.
+
+The repository currently tracks the pack folders. A `.gitignore` now excludes
+them going forward, but files already committed stay in the history until they
+are untracked:
+
+```bash
+git rm -r --cached "Cute_Fantasy_Free" "Farm RPG FREE 16x16 - Tiny Asset Pack" "SuperRetroRanch_FreeTier_v32" "Valley Ruin Asset Pack V0.3" craftpix-net-* "honey-elements-set" assets *.webp
+git commit -m "Untrack asset packs — licences forbid redistribution"
+```
+
+That leaves `Apocalypse-Farm.html` publishable on its own, which is all the game
+needs: the sprites it draws are already baked into it as a single atlas. Anyone
+rebuilding from source downloads the packs themselves and runs
+`tools/collect_assets.py`.
+
+Note that untracking does not purge history — for a repository that has already
+been pushed public, rewriting it (`git filter-repo`) or starting a fresh one is
+the thorough fix.
 
 ---
 
@@ -57,9 +85,23 @@ time and carry on ticking by hand.
 zone. Click the name to open the full method, cost and crop links; click the box
 to mark it done. The two are separate, so reading ahead never marks anything off.
 
-**Signboards.** Every major area carries a small nameplate — *Homestead*,
+**The board is the landing area.** The farm spans the full width of the page
+with the guide beneath it, so the map is what you see first and the build order
+is a scroll away.
+
+**Signboards.** Every major area carries a carved wooden nameplate — *Homestead*,
 *Animal yard*, *Wheat*, *Fodder*, *Farm pond*, *Orchard*. Just the name; hover
-for the size, the crop and the counts, click to open that guide.
+for the size, the crop and the counts, click to open that guide. Each area gets a
+different board, and a new farm deals out a different set.
+
+**One fence per farm.** The perimeter is picked from eight wooden fence styles
+and stays put for the life of that farm — reloading keeps it. Starting a new farm
+rolls a new one, along with a new arrangement of signboards. Both are fixed by a
+seed saved with the plan.
+
+**The animals move.** Cattle, goats and poultry drift a couple of tiles around
+the spot they were placed — two or three sideways, one or two up and down — and
+turn to face the way they are walking. They stay penned inside the yard.
 
 **Scale, honestly handled.** The board is deliberately **not** to scale — six
 acres is not twice the size of three on screen. It grows just enough that
@@ -108,6 +150,7 @@ the build reads from — see `assets/README.md` for the per-file provenance.
 | **Valley Ruin Asset Pack V0.3** | Rocks, scrub, reeds, sunflowers, flowering shrubs | As supplied |
 | **Craftpix** free plants + summer tileset | Orchard fruit trees, produce crates, the well, cart and barrel | Craftpix free licence |
 | Line art by **macrovector / Freepik** | Beehive, bee, tractor — recoloured at build time | **Attribution required** |
+| Wooden signboard and fence sheets | 8 zone nameplates, 8 perimeter fence styles | supplied as `signboards.jpg` / `fences.jpg` |
 
 The orchard adapts to the state: a coastal plan gets coconut palms, a hill plan
 apple trees, the plains plum and lemon.
@@ -142,6 +185,13 @@ After adding or replacing an asset pack, re-collect first:
 python3 tools/collect_assets.py && python3 build.py --atlas
 ```
 
+The signboard and fence sheets are cut separately, since they arrive as JPEGs
+with no alpha and no fixed grid:
+
+```bash
+python3 tools/extract_new_assets.py && python3 build.py --atlas
+```
+
 Optional local server, if you want an `http://` origin or to open it on your
 phone over the same Wi-Fi (`HOST=0.0.0.0 python3 serve.py`):
 
@@ -168,10 +218,11 @@ src/
   data-steps.js          buildSteps(plan) — the three-year build order
   farm.js                tile map, ruler metrics, renderer and hit-testing
   app.js                 interface, rulers, tooltips, auto-build
-  styles.css             warm parchment, hard edges, no emoji
+  styles.css             light parchment, hard edges, no emoji
   gen-atlas.js           generated — base64 atlas + sprite manifest
 tools/
   collect_assets.py      gathers used art from the packs into assets/
+  extract_new_assets.py  cuts signboards.jpg / fences.jpg into sprites
   build_atlas.py         crops and packs assets/ into one atlas
 ```
 

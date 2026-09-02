@@ -117,6 +117,12 @@ def main():
     for src, rel in FILES:
         n += copy(src, rel)
 
+    # the signboard and fence sheets are cut by tools/extract_new_assets.py
+    # straight into assets/new_assets, so there is nothing to gather here --
+    # this just warns if that step has not been run
+    if not os.path.isdir(os.path.join(DEST, "new_assets")):
+        print("  NOTE  run tools/extract_new_assets.py for the signboards and fences")
+
     for crop in CROPS:
         d = os.path.join(SRR, "assets", "crops", crop, "growth_basic")
         if not os.path.isdir(d):

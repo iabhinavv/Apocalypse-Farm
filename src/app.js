@@ -17,6 +17,10 @@ const App = {
   view: null,
   atlas: null,
   expanded: [],
+  // Fixes the look of one farm: which fence style rings it, and which wooden
+  // board fronts each area. Saved with the plan, so a farm keeps its fence
+  // across reloads, and re-rolled whenever a new farm is started.
+  seed: 1,
   auto: { on: false, timer: null, due: 0, paint: null }
 };
 
@@ -25,7 +29,7 @@ const App = {
 function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
-      acres: App.acres, stateId: App.stateId, done: App.done
+      acres: App.acres, stateId: App.stateId, done: App.done, seed: App.seed
     }));
   } catch (e) { /* private window, or storage disabled -- carry on */ }
 }
@@ -184,12 +188,43 @@ function drawRuler(rx, ry, corner, cap, view) {
 // A wooden plaque at the top edge of each major area. Positioned as a
 // percentage of the canvas so it tracks the map at any zoom, and rendered in
 // DOM so the wording stays legible however far out you are.
+// A seeded shuffle: the same farm always gets the same arrangement, a new farm
+// gets a different one. Rotating an index would only ever rotate the same
+// order, so the pairings would repeat.
+function shuffled(n, seed) {
+  const a = [];
+  for (let i = 0; i < n; i++) a.push(i);
+  let x = (seed * 1103515245 + 12345) >>> 0;
+  for (let i = n - 1; i > 0; i--) {
+    x = (x * 1103515245 + 12345) >>> 0;
+    const j = x % (i + 1);
+    const t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
 function drawSigns(layer, view) {
   layer.innerHTML = '';
   const L = view.layout;
-  (view.signs || []).forEach(function (s) {
+  const seed = (view.plan && view.plan.seed) || 1;
+  const boards = (typeof SIGN_PLAQUES !== 'undefined') ? SIGN_PLAQUES : [];
+  const order = shuffled(boards.length, seed);
+
+  (view.signs || []).forEach(function (s, i) {
     const b = el('button', 'sign');
     b.type = 'button';
+
+    // A different wooden board in front of each area, and a different set of
+    // boards on the next farm. Drawn as a border-image so the carved edge stays
+    // sharp and only the planking stretches to fit the name.
+    if (boards.length) {
+      const board = boards[order[i % order.length]];
+      b.style.borderImageSource = 'url("' + board.src + '")';
+      b.style.borderImageSlice = '6 8 6 8';
+      b.style.borderImageWidth = '6px 8px 6px 8px';
+      b.style.borderImageRepeat = 'stretch';
+      b.classList.add('woodsign');
+    }
     // keep the plaque on the board even when its block hugs an edge
     const pct = Math.max(9, Math.min(91, s.x / L.w * 100));
     b.style.left = pct + '%';
@@ -510,6 +545,7 @@ function renderSetup() {
   if (!App.stateId) start.textContent = 'Choose a state to begin';
   start.onclick = function () {
     App.done = [];
+    App.seed = Math.floor(Math.random() * 100000) + 1;
     startGame();
   };
   wrap.appendChild(start);
@@ -536,6 +572,7 @@ function renderSetup() {
 
 function startGame() {
   App.plan = buildPlan(App.acres, App.stateId);
+  App.plan.seed = App.seed;
   save();
   renderGame();
   window.scrollTo(0, 0);
@@ -570,8 +607,8 @@ function renderGame() {
 
   const cap = el('div', 'mapcap');
   mapcol.appendChild(cap);
-  mapcol.appendChild(autoBar());
 
+  const info = el('div', 'mapinfo');
   const meters = el('div', 'meters');
   METERS.forEach(function (m) {
     const r = el('div', 'meter');
@@ -584,7 +621,12 @@ function renderGame() {
     r.appendChild(el('span', 'val', meterValue(m) + '%'));
     meters.appendChild(r);
   });
-  mapcol.appendChild(meters);
+  info.appendChild(meters);
+  const side = el('div', 'side');
+  info.appendChild(side);
+  mapcol.appendChild(info);
+
+  side.appendChild(autoBar());
 
   const pending = awaitingArt(App.view ? App.view.features
     : featuresFor(App.plan, layoutFarm(App.plan), App.done));
@@ -594,17 +636,17 @@ function renderGame() {
     const ul = el('div', 'pendinglist');
     pending.forEach(function (label) { ul.appendChild(el('span', 'chip', label)); });
     box.appendChild(ul);
-    mapcol.appendChild(box);
+    side.appendChild(box);
   }
 
   const credit = el('div', 'credit');
   credit.innerHTML =
     'Art: <b>Cute Fantasy</b> (free), <b>Farm RPG FREE 16x16</b>, <b>Super Retro ' +
     'Ranch</b> free tier by <b>Gif</b>, <b>Valley Ruin</b>, <b>Craftpix</b> free ' +
-    'plants and summer tileset, and line art by <b>macrovector / Freepik</b> ' +
-    '(recoloured). All non-commercial. Nothing drawn for this project — a sheep ' +
-    'stands in for goats.';
-  mapcol.appendChild(credit);
+    'plants and summer tileset, line art by <b>macrovector / Freepik</b> ' +
+    '(recoloured), and the wooden signboard and fence sheets. All non-commercial. ' +
+    'Nothing drawn for this project — a sheep stands in for goats.';
+  side.appendChild(credit);
   game.appendChild(mapcol);
 
   // --- plan column ---
@@ -1116,6 +1158,7 @@ function boot() {
       App.acres = saved.acres;
       App.stateId = saved.stateId;
       App.done = saved.done || [];
+      App.seed = saved.seed || 1;
       startGame();
     } else {
       renderSetup();

@@ -308,10 +308,12 @@ sprites["flowers_pink"] = trim(FLOWERS, (64, 64, 80, 96))
 # Craftpix -- fruit trees, produce crates, the well, cart and barrel
 # ===========================================================================
 
-# The mature trees sit in columns 6 and 7 but do not line up with the 48px
-# grid -- these are their measured vertical extents.
+# The mature trees do NOT sit on the 48px grid this sheet otherwise uses --
+# slicing on it cuts them in half. These are the measured column and row
+# extents of each specimen.
 PLANTS = load("craftpix/Plants.png")
-FRUITED, PLAIN = 336, 288          # x of the fruiting and plain tree columns
+FRUITED = (324, 377)               # the column bearing fruit
+PLAIN = (256, 313)                 # the same trees without fruit
 
 for name, col, y0, y1 in (
     ("fruit_plum", FRUITED, 14, 80),
@@ -322,7 +324,7 @@ for name, col, y0, y1 in (
     ("leafy_tree", PLAIN, 149, 208),
     ("leafy_tall", PLAIN, 14, 80),
 ):
-    sprites[name] = trim(PLANTS, (col, y0, col + 48, y1))
+    sprites[name] = trim(PLANTS, (col[0], y0, col[1], y1))
 
 SUPPLIES = load("craftpix/Supplies.png")      # 32px cells
 
@@ -353,6 +355,75 @@ sprites["tiller"] = tint(load("freepik/tractor.webp"), (0x5f, 0x47, 0x2d), 22)
 
 
 # ===========================================================================
+# Wooden signboards and fences, cut from the sheets by extract_new_assets.py
+# ===========================================================================
+
+NEW = os.path.join(ASSETS, "new_assets")
+
+# Eight fence styles, each a run of three pickets. Sliced into 16px tiles so
+# the perimeter painter can lay them end to end; a farm picks one style and
+# keeps it, and a new farm picks another.
+FENCE_STYLES = 0
+if os.path.isdir(NEW):
+    fence_files = sorted(
+        [f for f in os.listdir(NEW) if f.startswith("fence_") and f.endswith(".png")],
+        key=lambda f: int(f.split("_")[1].split(".")[0]))
+    for i, fname in enumerate(fence_files):
+        sheet = Image.open(os.path.join(NEW, fname)).convert("RGBA")
+        for j, part in enumerate(("l", "m", "r")):
+            sprites["fence%d_%s" % (i, part)] = trim(
+                sheet, (j * 16, 0, (j + 1) * 16, sheet.height))
+    FENCE_STYLES = len(fence_files)
+
+
+def plaque_only(im):
+    """The board above its post.
+
+    Every signboard is a plaque on a narrow stake. For a CSS border-image we
+    want just the plaque, so scan up from the bottom until the drawn width
+    widens back out to the board itself.
+    """
+    px = im.load()
+    widths = []
+    for y in range(im.height):
+        xs = [x for x in range(im.width) if px[x, y][3] > 128]
+        widths.append((min(xs), max(xs)) if xs else None)
+    full = max((w[1] - w[0]) for w in widths if w)
+    cut = im.height
+    for y in range(im.height - 1, -1, -1):
+        w = widths[y]
+        if w and (w[1] - w[0]) >= full * 0.75:
+            cut = y + 1
+            break
+    return im.crop((0, 0, im.width, max(4, cut)))
+
+
+SIGN_PLAQUES = []
+if os.path.isdir(NEW):
+    sign_files = sorted(
+        [f for f in os.listdir(NEW) if f.startswith("signboard_") and f.endswith(".png")],
+        key=lambda f: int(f.split("_")[1].split(".")[0]))
+    for fname in sign_files:
+        board = Image.open(os.path.join(NEW, fname)).convert("RGBA")
+        plaque = plaque_only(board)
+        bb = plaque.getbbox()
+        if bb:
+            plaque = plaque.crop(bb)
+        # Only the single-plaque boards are usable as a nameplate. The
+        # two- and three-plank ones become stripes once the middle is
+        # stretched to fit a label, and the text disappears into them.
+        if plaque.height > 24:
+            continue
+        buf2 = io.BytesIO()
+        plaque.save(buf2, format="PNG", optimize=True)
+        SIGN_PLAQUES.append({
+            "src": "data:image/png;base64," +
+                   base64.b64encode(buf2.getvalue()).decode("ascii"),
+            "w": plaque.width, "h": plaque.height
+        })
+
+
+# ===========================================================================
 # pack
 # ===========================================================================
 
@@ -369,24 +440,6 @@ def pack(items, width=512, pad=1):
         shelf = max(shelf, h)
     return manifest, y + shelf + pad
 
-
-# ===========================================================================
-# New Assets (fences and signboards)
-# ===========================================================================
-
-for i in range(9):
-    try:
-        im = load(f"new_assets/fence_new_{i}.png")
-        sprites[f"fence_new_{i}"] = fit(im, 16)
-    except Exception:
-        pass
-        
-for i in range(9):
-    try:
-        im = load(f"new_assets/signboard_new_{i}.png")
-        sprites[f"signboard_new_{i}"] = fit(im, 32)
-    except Exception:
-        pass
 
 manifest, height = pack(sprites)
 atlas = Image.new("RGBA", (512, height), (0, 0, 0, 0))
@@ -410,8 +463,12 @@ with open(OUT_JS, "w") as fh:
     fh.write("// macrovector / Freepik, recoloured.\n")
     fh.write("const ATLAS_SRC = 'data:image/png;base64," + b64 + "';\n")
     fh.write("const ATLAS = " + json.dumps(manifest, separators=(",", ":")) + ";\n")
+    fh.write("const FENCE_STYLES = " + str(FENCE_STYLES) + ";\n")
+    fh.write("const SIGN_PLAQUES = " +
+             json.dumps(SIGN_PLAQUES, separators=(",", ":")) + ";\n")
 
 print("packed %d sprites into 512x%d" % (len(manifest), height))
+print("  %d fence styles, %d signboards" % (FENCE_STYLES, len(SIGN_PLAQUES)))
 print("  png  %.0f KB   base64 %.0f KB" % (len(raw) / 1024, len(b64) / 1024))
 print("  -> " + os.path.relpath(OUT_PNG, ROOT))
 print("  -> " + os.path.relpath(OUT_JS, ROOT))
