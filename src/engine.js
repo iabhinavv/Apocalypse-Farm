@@ -391,8 +391,184 @@ function rupees(n) {
 
 function acresText(a) {
   if (a >= 10) return a.toFixed(0) + ' acres';
-  if (a >= 1) return a.toFixed(1) + ' acres';
+  if (a >= 1) {
+    const t = a.toFixed(1);
+    return t === '1.0' ? '1 acre' : t + ' acres';
+  }
   if (a >= 0.1) return a.toFixed(2).replace(/0$/, '') + ' acre';
   // below a tenth of an acre, square feet is the number people can picture
   return Math.round(a * 43560).toLocaleString('en-IN') + ' sq ft';
+}
+
+
+// ---------------------------------------------------------------------------
+// What a crop or an animal means on this particular holding.
+//
+// The guides are written per acre and per head. These turn them into the
+// numbers for the plan actually on screen: how much land, how much seed to
+// buy, how many animals, what they eat between them.
+// ---------------------------------------------------------------------------
+
+// Pull a "40–50 kg per acre" style rate out of a sentence. Returns null when
+// there is nothing to parse, so a guide never shows an invented figure.
+function perAcreRate(text) {
+  if (!text) return null;
+  // an adjective often sits between the number and the unit -- "8,000-10,000
+  // rooted slips per acre" -- so allow one word through
+  const m = /([\d,.]+)\s*(?:[–—-]\s*([\d,.]+))?\s*(?:[a-z]+\s+)?(kg|g|quintal|tonnes?|slips|setts|tubers|plants|packets?|seedlings|rhizomes|fingerlings)\b[^.]{0,44}?per acre/i.exec(text);
+  if (!m) return null;
+  const lo = parseFloat(m[1].replace(/,/g, ''));
+  const hi = m[2] ? parseFloat(m[2].replace(/,/g, '')) : lo;
+  if (!isFinite(lo) || !isFinite(hi)) return null;
+  return { low: lo, high: hi, unit: m[3].toLowerCase() };
+}
+
+// the compact box wants the headline, not the whole paragraph
+function firstSentence(text) {
+  if (!text) return '';
+  const m = /^[^.]*\./.exec(text.trim());
+  return m ? m[0] : text;
+}
+
+function tidy(n) {
+  if (!isFinite(n)) return '—';
+  if (n >= 1000) return Math.round(n).toLocaleString('en-IN');
+  if (n >= 100) return String(Math.round(n));
+  if (n >= 10) return String(Math.round(n * 10) / 10);
+  return String(Math.round(n * 100) / 100);
+}
+
+function spanText(rate, acres) {
+  const lo = rate.low * acres, hi = rate.high * acres;
+  const body = (Math.abs(hi - lo) < 0.01)
+    ? tidy(lo)
+    : tidy(lo) + '–' + tidy(hi);
+  return body + ' ' + rate.unit;
+}
+
+// Where this crop sits in the plan, and what that comes to in real numbers.
+function cropOnFarm(crop, plan) {
+  if (!crop || !plan) return null;
+  const c = plan.crops;
+  const has = function (list) {
+    return (list || []).some(function (x) { return x && x.id === crop.id; });
+  };
+
+  let block = null, acres = 0, sharers = 1;
+  if ((c.stapleKharif && c.stapleKharif.id === crop.id) ||
+      (c.stapleRabi && c.stapleRabi.id === crop.id)) {
+    block = 'the cereal block'; acres = plan.scale.grain;
+  } else if (has(c.fodder)) {
+    block = 'the fodder plot'; acres = plan.scale.fodder;
+    sharers = Math.max(1, c.fodder.length);
+  } else if (has(c.pulses) || has(c.oilseeds)) {
+    block = 'the pulses and oilseeds block'; acres = plan.acres * 0.12;
+    sharers = Math.max(1, c.pulses.length + c.oilseeds.length);
+  } else if (has(c.veg)) {
+    block = 'the kitchen garden'; acres = plan.scale.veg;
+    sharers = Math.max(1, c.veg.length);
+  } else if (has(c.fruit)) {
+    block = 'the boundary orchard'; acres = plan.acres * 0.10;
+    sharers = Math.max(1, c.fruit.length);
+  }
+
+  if (!block) {
+    return { inPlan: false, soils: crop.soils || [] };
+  }
+
+  const share = acres / sharers;
+  const rows = [];
+
+  rows.push({
+    k: 'Where it goes',
+    v: block + (sharers > 1
+      ? ', ' + acresText(acres) + ' shared between ' + sharers + ' crops'
+      : ', ' + acresText(acres))
+  });
+  if (sharers > 1) {
+    rows.push({ k: 'Its share', v: 'about ' + acresText(share) + ' if you split the block evenly' });
+  }
+
+  const isTree = crop.cat === 'fruit';
+  if (isTree) {
+    const trees = Math.round(plan.livestock.trees / Math.max(1, c.fruit.length));
+    rows.push({ k: 'How many to plant', v: 'about ' + trees + ' trees, of ' +
+      plan.livestock.trees + ' on the boundary' });
+  } else {
+    const seed = perAcreRate(crop.seed);
+    if (seed) rows.push({ k: 'Seed to buy', v: spanText(seed, share) + ' for ' + acresText(share) });
+  }
+
+  const y = perAcreRate(crop.yield);
+  if (y && !isTree) rows.push({ k: 'Expect', v: spanText(y, share) + ' a season' });
+
+  rows.push({ k: 'When', v: firstSentence(crop.window) });
+  return { inPlan: true, block: block, acres: acres, share: share, rows: rows };
+}
+
+// The same for livestock: how many to buy, what they need, what they give.
+function animalOnFarm(animal, plan) {
+  if (!animal || !plan) return null;
+  const ls = plan.livestock;
+  const rows = [];
+  const range = function (lo, hi, unit) {
+    return tidy(lo) + (Math.abs(hi - lo) < 0.01 ? '' : '–' + tidy(hi)) + ' ' + unit;
+  };
+
+  if (animal.id === 'cattle') {
+    const n = ls.dairy;
+    rows.push({ k: 'How many to buy', v: n + (n === 1 ? ' animal' : ' animals') });
+    const perHead = plan.scale.fodder / Math.max(1, n);
+    rows.push({ k: 'Fodder land', v: acresText(plan.scale.fodder) + ' in the plan — about ' +
+      acresText(perHead) + ' an animal, against the 0.2–0.3 this guide calls for' +
+      (perHead >= 0.2 ? '. The margin also feeds the goats.' : '.') });
+    rows.push({ k: 'Feed a day', v: range(25 * n, 30 * n, 'kg green fodder') + ', ' +
+      range(4 * n, 5 * n, 'kg dry') + ', ' + range(2 * n, 2 * n, 'kg concentrate') });
+    rows.push({ k: 'Water a day', v: range(70 * n, 100 * n, 'litres') });
+    rows.push({ k: 'Milk a day', v: range(8 * n, 15 * n, 'litres') });
+    rows.push({ k: 'Dung a day', v: range(10 * n, 15 * n, 'kg') +
+      ' — a ' + plan.energy.biogas + ' m³ biogas plant wants about 30 kg' });
+    rows.push({ k: 'Cost to buy', v: rupees(30000 * n) + ' – ' + rupees(80000 * n) });
+
+  } else if (animal.id === 'goat') {
+    const n = ls.goats;
+    rows.push({ k: 'How many to buy', v: n + ' head' });
+    rows.push({ k: 'Feed a day', v: range(3 * n, 5 * n, 'kg green fodder and browse') });
+    rows.push({ k: 'Water a day', v: range(4 * n, 6 * n, 'litres') });
+    rows.push({ k: 'Housing', v: n + ' sq m of raised slatted floor, one an adult' });
+    rows.push({ k: 'Cost to buy', v: rupees(5000 * n) + ' – ' + rupees(10000 * n) });
+
+  } else if (animal.id === 'poultry') {
+    const n = ls.poultry;
+    rows.push({ k: 'How many to buy', v: n + ' birds' });
+    rows.push({ k: 'Feed a day', v: range(0.04 * n, 0.06 * n, 'kg grain') + ', on top of foraging' });
+    rows.push({ k: 'Water a day', v: range(0.25 * n, 0.25 * n, 'litres') });
+    rows.push({ k: 'Housing', v: (n * 3) + ' sq ft of raised coop, three a bird' });
+    rows.push({ k: 'Eggs a year', v: range(100 * n, 150 * n, 'eggs') });
+    rows.push({ k: 'Cost to buy', v: rupees(150 * n) + ' – ' + rupees(300 * n) });
+
+  } else if (animal.id === 'fish') {
+    const a = plan.livestock.pond;
+    rows.push({ k: 'Pond', v: acresText(a) + ' of water, 1.5–2 m deep' });
+    rows.push({ k: 'Fingerlings to buy', v: tidy(4000 * a) + ' in a 4:3:3 catla, rohu, mrigal mix' });
+    rows.push({ k: 'Lime before stocking', v: tidy(200 * a) + ' kg' });
+    rows.push({ k: 'Expect', v: range(800 * a, 1200 * a, 'kg of fish a year') });
+    rows.push({ k: 'Cost to stock', v: rupees(4000 * a * 2) + ' – ' + rupees(4000 * a * 4) });
+
+  } else if (animal.id === 'bees') {
+    rows.push({ k: 'How many to buy', v: '2–4 colonies' });
+    rows.push({ k: 'Expect', v: '20–80 kg of honey a year, and 20–40% better set on ' +
+      acresText(plan.acres * 0.10) + ' of fruit' });
+    rows.push({ k: 'Cost to buy', v: rupees(6000) + ' – ' + rupees(20000) });
+
+  } else if (animal.id === 'draught') {
+    rows.push({ k: 'How many to buy', v: plan.acres < 15 ? 'a pair' : 'a pair, if you keep any' });
+    rows.push({ k: 'Worth it?', v: plan.acres < 10
+      ? 'Yes at ' + plan.acres + ' acres — competitive with a power tiller'
+      : 'Above about 10–15 acres mechanisation usually wins' });
+    rows.push({ k: 'Feed a working day', v: '60 kg green, 10 kg dry, 4–6 kg concentrate for the pair' });
+    rows.push({ k: 'Cost to buy', v: rupees(40000) + ' – ' + rupees(80000) + ' a pair' });
+  }
+
+  return rows.length ? rows : null;
 }

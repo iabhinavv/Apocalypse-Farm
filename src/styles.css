@@ -767,7 +767,6 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
   overscroll-behavior: contain;
   width: fit-content;
   max-width: 100%;
-  margin: 0 auto;
   /* `safe` keeps the top-left reachable when the board is bigger than the
      panel, which plain centring would cut off */
   display: grid;
@@ -838,16 +837,30 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 }
 
 /* --- zone nameplates carved from the wooden signboard sheet -------------- */
-/* --- zoom control -------------------------------------------------------- */
+/* --- zoom control, floating in the board's bottom-left corner ------------ */
 
-.zoomctl {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-left: 4px;
+.mapstage {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
-.zoomctl > .smallcaps { font-size: .7rem; }
+.zoomctl {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  background: rgba(247, 240, 222, .92);
+  border: 1px solid var(--edge);
+  box-shadow: 2px 2px 0 var(--shadow);
+}
+
+.zoomctl > .smallcaps { font-size: .64rem; margin-right: 1px; }
 
 .zoombtn {
   background: var(--card-2);
@@ -868,3 +881,23 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 /* the nameplate is a plain box again -- readable at any zoom, and it does not
    cover the crops the way a full-size wooden board did */
 .sign { font-size: .6rem; padding: 1px 6px 2px; }
+
+/* --- what a guide means on this particular holding ----------------------- */
+
+.onfarm {
+  border: 1px solid var(--green);
+  border-left: 4px solid var(--green);
+  background: var(--sheet-2);
+  padding: 10px 14px 4px;
+  margin: 0 0 18px;
+}
+
+.onfarm > .smallcaps {
+  display: block;
+  color: var(--green-deep);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.onfarm .factrow { border-bottom-color: rgba(0, 0, 0, .07); }
+.onfarm .factrow:last-child { border-bottom: none; }

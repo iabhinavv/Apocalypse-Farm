@@ -188,10 +188,10 @@ function drawRuler(rx, ry, corner, cap, view) {
 // A wooden plaque at the top edge of each major area. Positioned as a
 // percentage of the canvas so it tracks the map at any zoom, and rendered in
 // DOM so the wording stays legible however far out you are.
-// Zoom the board in and out. The wheel works over the map itself, anchored on
-// the pointer; the buttons step it, and Fit returns to the size that suits the
-// window. Quarter steps, so a notch eases rather than doubling the board.
-function zoomControls(scroller) {
+// Zoom the board in and out, from a small panel floating in the bottom-left
+// corner of the map. Quarter steps, so each press eases rather than doubling
+// the board; Fit returns to the size that suits the window.
+function zoomControls() {
   const wrap = el('span', 'zoomctl');
   const label = el('span', 'zoomlabel');
 
@@ -227,7 +227,7 @@ function zoomControls(scroller) {
 
   const fit = el('button', 'zoombtn wide', 'Fit');
   fit.type = 'button';
-  fit.title = 'Back to the size that suits the window';
+  fit.title = 'Fit in screen';
   fit.onclick = function () { apply(function () { App.view.fitZoom(); }); };
 
   wrap.appendChild(el('span', 'smallcaps', 'zoom'));
@@ -235,20 +235,6 @@ function zoomControls(scroller) {
   wrap.appendChild(label);
   wrap.appendChild(inn);
   wrap.appendChild(fit);
-
-  if (scroller) {
-    scroller.addEventListener('wheel', function (e) {
-      if (!App.view) return;
-      // the board is a map panel, so the wheel zooms it rather than scrolling
-      // the page past it -- shift+wheel still pans sideways
-      if (e.shiftKey) return;
-      e.preventDefault();
-      // one quarter step per notch, however big a delta the mouse reports --
-      // some send 100 per notch and some send 3
-      const step = (e.deltaY < 0 ? 1 : -1) * FarmView.ZOOM_STEP;
-      apply(function () { App.view.setZoom(App.view.scale + step, e.clientX, e.clientY); });
-    }, { passive: false });
-  }
 
   refresh();
   App.zoomRefresh = refresh;
@@ -648,6 +634,7 @@ function renderGame() {
 
   // A fixed-height scroller: big farms get a bigger board and you pan around it
   // rather than everything shrinking until the animals are unreadable.
+  const stage = el('div', 'mapstage');
   const scroller = el('div', 'mapscroll');
   const grid = el('div', 'mapgrid');
   const corner = el('div', 'rcorner');
@@ -663,7 +650,8 @@ function renderGame() {
   grid.appendChild(rulerY);
   grid.appendChild(frame);
   scroller.appendChild(grid);
-  mapcol.appendChild(scroller);
+  stage.appendChild(scroller);
+  mapcol.appendChild(stage);
 
   const cap = el('div', 'mapcap');
   mapcol.appendChild(cap);
@@ -745,8 +733,7 @@ function renderGame() {
   App.view = new FarmView(cv, App.atlas);
   App.view.setPlan(App.plan, App.done);
   drawRuler(rulerX, rulerY, corner, cap, App.view);
-  // after drawRuler: it rewrites the caption's contents
-  cap.appendChild(zoomControls(scroller));
+  stage.appendChild(zoomControls());
   drawSigns(signs, App.view);
   wireMapPointer(cv, App.view);
   watchMapColumn();
@@ -1156,6 +1143,29 @@ function openCrop(c) {
       const p = App.plan;
       const relevant = p ? p.state.soils.filter(function (s) { return c.bySoil[s]; }) : [];
 
+      // the guide is written per acre; this is what that comes to on the
+      // acreage actually on screen
+      const mine = p ? cropOnFarm(c, p) : null;
+      if (mine && mine.inPlan) {
+        const box = el('div', 'onfarm');
+        box.appendChild(el('div', 'smallcaps', 'on your ' + p.acres +
+          ' acres in ' + p.state.name));
+        mine.rows.forEach(function (r) {
+          const line = el('div', 'factrow');
+          line.appendChild(el('div', 'k', r.k));
+          line.appendChild(el('div', null, r.v));
+          box.appendChild(line);
+        });
+        body.appendChild(box);
+      } else if (mine) {
+        const note = el('div', 'callout');
+        note.innerHTML = '<b>Not in this plan</b><br>' + c.name + ' is not among the ' +
+          'crops picked for ' + p.state.name + '. It suits ' +
+          mine.soils.map(function (x) { return SOILS[x].name.toLowerCase(); }).join(', ') +
+          ' — the guide below is general.';
+        body.appendChild(note);
+      }
+
       if (relevant.length) {
         relevant.forEach(function (sid) {
           const d = el('div', 'soilnote');
@@ -1195,6 +1205,21 @@ function openCrop(c) {
 
 function openAnimal(a) {
   openDrawer(a.sprite, 3, a.name, a.local, function (body) {
+    const p = App.plan;
+    const mine = p ? animalOnFarm(a, p) : null;
+    if (mine) {
+      const box = el('div', 'onfarm');
+      box.appendChild(el('div', 'smallcaps', 'on your ' + p.acres +
+        ' acres in ' + p.state.name));
+      mine.forEach(function (r) {
+        const line = el('div', 'factrow');
+        line.appendChild(el('div', 'k', r.k));
+        line.appendChild(el('div', null, r.v));
+        box.appendChild(line);
+      });
+      body.appendChild(box);
+    }
+
     fact(body, 'How many', a.perUnit);
     fact(body, 'Breeds', a.breeds);
     fact(body, 'Housing', a.housing_note);

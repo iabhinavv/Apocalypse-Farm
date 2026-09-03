@@ -70,6 +70,13 @@ the true dimensions underneath — a 10-acre farm reads *229 × 177 m · 4.05 ha
 grid's aspect ratio, so both axes come out at the same metres per tile and the
 ruler is honest at every acreage.
 
+**The guides do the arithmetic for you.** Open a crop or an animal and it leads
+with what it means on *your* acreage before the general guide: which block it
+goes in and how many acres, how much seed to buy for that area, what to expect
+back, how many animals and what they eat and drink between them, what they cost.
+A crop that is not in your plan says so rather than inventing a number, and a
+rate the guide does not state per acre is left out rather than guessed.
+
 **Hover anything, click anything.** Passing the pointer over the map names what
 is under it and gives the number that matters — the crop and its season, the
 acres in that block, how much fodder feeds the herd, the kWp of the solar array,
@@ -100,11 +107,12 @@ left. Below that it is a single column.
 the same readable size at any zoom rather than growing with the map; hover for
 the full name, the size, the crop and the counts, and click to open that guide.
 
-**Zoom.** The wheel zooms the board from 0.5× to 5× in quarter steps, anchored
-on the pointer, and there are `−` / `+` / `Fit` buttons under the map.
-Shift-wheel pans sideways instead. The panel is a fixed height whatever the farm
-or the zoom, so nothing below it shifts about; the board scrolls inside it,
-sideways once the farm is wider than the panel.
+**Zoom.** A small `−` / `+` / `Fit` panel sits in the bottom-left corner of the
+board and steps the zoom from 0.5× to 5× a quarter at a time; *Fit* returns to
+the size that suits the window. The wheel is left alone, so it scrolls the page
+and the board normally. The panel is a fixed height whatever the farm or the
+zoom, so nothing below it shifts about; the board scrolls inside it, sideways
+once the farm is wider than the panel.
 
 **One fence per farm.** The perimeter is picked from eight wooden fence styles
 and stays put for the life of that farm — reloading keeps it. Starting a new farm
