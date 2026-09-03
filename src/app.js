@@ -188,33 +188,19 @@ function drawRuler(rx, ry, corner, cap, view) {
 // A wooden plaque at the top edge of each major area. Positioned as a
 // percentage of the canvas so it tracks the map at any zoom, and rendered in
 // DOM so the wording stays legible however far out you are.
-// A seeded shuffle: the same farm always gets the same arrangement, a new farm
-// gets a different one. Rotating an index would only ever rotate the same
-// order, so the pairings would repeat.
-function shuffled(n, seed) {
-  const a = [];
-  for (let i = 0; i < n; i++) a.push(i);
-  let x = (seed * 1103515245 + 12345) >>> 0;
-  for (let i = n - 1; i > 0; i--) {
-    x = (x * 1103515245 + 12345) >>> 0;
-    const j = x % (i + 1);
-    const t = a[i]; a[i] = a[j]; a[j] = t;
-  }
-  return a;
-}
-
 // Zoom the board in and out. The wheel works over the map itself, anchored on
 // the pointer; the buttons step it, and Fit returns to the size that suits the
-// window.
+// window. Quarter steps, so a notch eases rather than doubling the board.
 function zoomControls(scroller) {
   const wrap = el('span', 'zoomctl');
   const label = el('span', 'zoomlabel');
 
   function refresh() {
     if (!App.view) return;
-    label.textContent = App.view.scale + '\u00d7';
-    out.disabled = App.view.scale <= FarmView.ZOOM_MIN;
-    inn.disabled = App.view.scale >= FarmView.ZOOM_MAX;
+    const z = App.view.scale;
+    label.textContent = (z % 1 === 0 ? z : z.toFixed(2).replace(/0$/, '')) + '\u00d7';
+    out.disabled = z <= FarmView.ZOOM_MIN + 0.001;
+    inn.disabled = z >= FarmView.ZOOM_MAX - 0.001;
   }
 
   function apply(fn) {
@@ -228,12 +214,16 @@ function zoomControls(scroller) {
   const out = el('button', 'zoombtn', '\u2212');
   out.type = 'button';
   out.title = 'Zoom out';
-  out.onclick = function () { apply(function () { App.view.setZoom(App.view.scale - 1); }); };
+  out.onclick = function () {
+    apply(function () { App.view.setZoom(App.view.scale - FarmView.ZOOM_STEP); });
+  };
 
   const inn = el('button', 'zoombtn', '+');
   inn.type = 'button';
   inn.title = 'Zoom in';
-  inn.onclick = function () { apply(function () { App.view.setZoom(App.view.scale + 1); }); };
+  inn.onclick = function () {
+    apply(function () { App.view.setZoom(App.view.scale + FarmView.ZOOM_STEP); });
+  };
 
   const fit = el('button', 'zoombtn wide', 'Fit');
   fit.type = 'button';
@@ -253,7 +243,9 @@ function zoomControls(scroller) {
       // the page past it -- shift+wheel still pans sideways
       if (e.shiftKey) return;
       e.preventDefault();
-      const step = e.deltaY < 0 ? 1 : -1;
+      // one quarter step per notch, however big a delta the mouse reports --
+      // some send 100 per notch and some send 3
+      const step = (e.deltaY < 0 ? 1 : -1) * FarmView.ZOOM_STEP;
       apply(function () { App.view.setZoom(App.view.scale + step, e.clientX, e.clientY); });
     }, { passive: false });
   }
@@ -266,40 +258,25 @@ function zoomControls(scroller) {
 function drawSigns(layer, view) {
   layer.innerHTML = '';
   const L = view.layout;
-  const seed = (view.plan && view.plan.seed) || 1;
-  const boards = (typeof SIGN_PLAQUES !== 'undefined') ? SIGN_PLAQUES : [];
-  const order = shuffled(boards.length, seed);
 
-  (view.signs || []).forEach(function (s, i) {
+  (view.signs || []).forEach(function (s) {
     const b = el('button', 'sign');
     b.type = 'button';
+    b.textContent = s.label;
 
-    // A different wooden board in front of each area, and a different set of
-    // boards on the next farm. The board is drawn whole at a fixed size, a few
-    // tiles wide -- stretching one to fit a long name pulled the planks apart.
-    if (boards.length) {
-      const board = boards[order[i % order.length]];
-      // 24px against a 32px cow: a marker planted in the field, not a banner
-      // over it. The board art is 34px, so it is drawn below its own size --
-      // it is a solid block of colour and reads bigger than the animal does.
-      const z = view.scale || 1;
-      const w = Math.round(24 * z);
-      b.style.backgroundImage = 'url("' + board.src + '")';
-      b.style.width = w + 'px';
-      b.style.height = Math.round(w * board.h / board.w) + 'px';
-      b.style.fontSize = Math.max(5, 3.7 * z) + 'px';
-      b.classList.add('woodsign');
-    }
     // keep the plaque on the board even when its block hugs an edge
     const pct = Math.max(9, Math.min(91, s.x / L.w * 100));
     b.style.left = pct + '%';
     b.style.top = (s.y / L.h * 100) + '%';
-    b.textContent = s.label;
+
     if (s.tip) {
-      b.onmouseenter = function (e) { showTip(s.tip + (s.action ? '  ·  click for the guide' : ''), e); };
+      b.onmouseenter = function (e) {
+        showTip(s.tip + (s.action ? '  ·  click for the guide' : ''), e);
+      };
       b.onmousemove = function (e) { moveTip(e); };
       b.onmouseleave = hideTip;
     }
+
     if (s.action) {
       b.onclick = function (e) {
         e.stopPropagation();
@@ -311,6 +288,7 @@ function drawSigns(layer, view) {
     } else {
       b.disabled = true;
     }
+
     layer.appendChild(b);
   });
 }

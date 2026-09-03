@@ -838,30 +838,6 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 }
 
 /* --- zone nameplates carved from the wooden signboard sheet -------------- */
-
-.sign.woodsign {
-  /* the board at its own proportions, a few tiles wide, with the name sitting
-     on the plank rather than stretching it */
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
-  border: none;
-  padding: 0;
-  box-shadow: none;
-  display: grid;
-  place-items: center;
-  letter-spacing: .01em;
-  line-height: 1;
-  /* dark lettering reads as carved into the plank; cream vanished on the
-     lighter boards */
-  color: #2e1d0d;
-  text-shadow: none;
-  image-rendering: pixelated;
-  opacity: 1;
-  overflow: visible;
-}
-
-.sign.woodsign:not([disabled]):hover { filter: brightness(1.14); }
-
 /* --- zoom control -------------------------------------------------------- */
 
 .zoomctl {
@@ -888,3 +864,7 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 .zoombtn[disabled] { opacity: .38; cursor: not-allowed; }
 
 .zoomlabel { font-family: var(--mono); font-size: .78rem; min-width: 2.2ch; text-align: center; }
+
+/* the nameplate is a plain box again -- readable at any zoom, and it does not
+   cover the crops the way a full-size wooden board did */
+.sign { font-size: .6rem; padding: 1px 6px 2px; }

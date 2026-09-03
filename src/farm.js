@@ -759,6 +759,9 @@ FarmView.prototype.resize = function () {
   this.autoScale = z;
   // a zoom the player set by wheel or button wins over the fitted one
   this.scale = this.userZoom || z;
+  // Stay pixelated even at a fractional zoom. Some source pixels come out a
+  // touch wider than others, but smoothing turns the whole farm soft, which
+  // looks far worse on art drawn at 16px.
 
   this.canvas.width = wpx;
   this.canvas.height = hpx;
@@ -767,15 +770,19 @@ FarmView.prototype.resize = function () {
   this.ctx.imageSmoothingEnabled = false;
 };
 
-FarmView.ZOOM_MIN = 1;
+FarmView.ZOOM_MIN = 0.5;
 FarmView.ZOOM_MAX = 5;
+FarmView.ZOOM_STEP = 0.25;      // a quarter at a time, so the wheel eases in
 
 // Set the zoom, keeping whatever is under (ax, ay) -- client coordinates --
 // in the same place on screen afterwards, so zooming feels anchored on the
 // pointer rather than jumping to a corner.
 FarmView.prototype.setZoom = function (z, ax, ay) {
-  z = Math.max(FarmView.ZOOM_MIN, Math.min(FarmView.ZOOM_MAX, Math.round(z)));
-  if (z === this.scale) return false;
+  // quarter steps rather than whole numbers -- a whole step doubles the board
+  // and the jump is jarring
+  z = Math.round(z / FarmView.ZOOM_STEP) * FarmView.ZOOM_STEP;
+  z = Math.max(FarmView.ZOOM_MIN, Math.min(FarmView.ZOOM_MAX, z));
+  if (Math.abs(z - this.scale) < 0.001) return false;
 
   const scroller = this.scroller();
   const box = this.canvas.getBoundingClientRect();

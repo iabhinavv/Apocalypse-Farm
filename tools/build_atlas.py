@@ -376,51 +376,6 @@ if os.path.isdir(NEW):
     FENCE_STYLES = len(fence_files)
 
 
-def plaque_only(im):
-    """The board above its post.
-
-    Every signboard is a plaque on a narrow stake. For a CSS border-image we
-    want just the plaque, so scan up from the bottom until the drawn width
-    widens back out to the board itself.
-    """
-    px = im.load()
-    widths = []
-    for y in range(im.height):
-        xs = [x for x in range(im.width) if px[x, y][3] > 128]
-        widths.append((min(xs), max(xs)) if xs else None)
-    full = max((w[1] - w[0]) for w in widths if w)
-    cut = im.height
-    for y in range(im.height - 1, -1, -1):
-        w = widths[y]
-        if w and (w[1] - w[0]) >= full * 0.75:
-            cut = y + 1
-            break
-    return im.crop((0, 0, im.width, max(4, cut)))
-
-
-SIGN_PLAQUES = []
-if os.path.isdir(NEW):
-    sign_files = sorted(
-        [f for f in os.listdir(NEW) if f.startswith("signboard_") and f.endswith(".png")],
-        key=lambda f: int(f.split("_")[1].split(".")[0]))
-    for fname in sign_files:
-        board = Image.open(os.path.join(NEW, fname)).convert("RGBA")
-        plaque = plaque_only(board)
-        bb = plaque.getbbox()
-        if bb:
-            plaque = plaque.crop(bb)
-        # Only the single-plaque boards are usable as a nameplate. The
-        # two- and three-plank ones become stripes once the middle is
-        # stretched to fit a label, and the text disappears into them.
-        if plaque.height > 24:
-            continue
-        buf2 = io.BytesIO()
-        plaque.save(buf2, format="PNG", optimize=True)
-        SIGN_PLAQUES.append({
-            "src": "data:image/png;base64," +
-                   base64.b64encode(buf2.getvalue()).decode("ascii"),
-            "w": plaque.width, "h": plaque.height
-        })
 
 
 # ===========================================================================
@@ -464,11 +419,9 @@ with open(OUT_JS, "w") as fh:
     fh.write("const ATLAS_SRC = 'data:image/png;base64," + b64 + "';\n")
     fh.write("const ATLAS = " + json.dumps(manifest, separators=(",", ":")) + ";\n")
     fh.write("const FENCE_STYLES = " + str(FENCE_STYLES) + ";\n")
-    fh.write("const SIGN_PLAQUES = " +
-             json.dumps(SIGN_PLAQUES, separators=(",", ":")) + ";\n")
 
 print("packed %d sprites into 512x%d" % (len(manifest), height))
-print("  %d fence styles, %d signboards" % (FENCE_STYLES, len(SIGN_PLAQUES)))
+print("  %d fence styles" % FENCE_STYLES)
 print("  png  %.0f KB   base64 %.0f KB" % (len(raw) / 1024, len(b64) / 1024))
 print("  -> " + os.path.relpath(OUT_PNG, ROOT))
 print("  -> " + os.path.relpath(OUT_JS, ROOT))
