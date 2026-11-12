@@ -238,7 +238,7 @@ src/
   data-steps.js          buildSteps(plan) — the three-year build order
   farm.js                tile map, ruler metrics, renderer and hit-testing
   app.js                 interface, rulers, tooltips, auto-build
-  styles.css             light parchment, hard edges, no emoji
+  styles.css             modern light theme, system sans, no emoji
   gen-atlas.js           generated — base64 atlas + sprite manifest
 tools/
   collect_assets.py      gathers used art from the packs into assets/

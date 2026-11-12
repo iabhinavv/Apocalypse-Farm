@@ -757,7 +757,7 @@ FarmView.prototype.resize = function () {
   const roomH = Math.max(320, Math.min(window.innerHeight * 0.76, 900)) * 1.6;
   if (z > 1 && hpx * z > roomH) z -= 1;
   this.autoScale = z;
-  // a zoom the player set by wheel or button wins over the fitted one
+  // a zoom the player set with the buttons wins over the fitted one
   this.scale = this.userZoom || z;
   // Stay pixelated even at a fractional zoom. Some source pixels come out a
   // touch wider than others, but smoothing turns the whole farm soft, which
@@ -772,36 +772,49 @@ FarmView.prototype.resize = function () {
 
 FarmView.ZOOM_MIN = 0.5;
 FarmView.ZOOM_MAX = 5;
-FarmView.ZOOM_STEP = 0.25;      // a quarter at a time, so the wheel eases in
+FarmView.ZOOM_STEP = 0.25;      // a quarter at a time, so a press eases in
 
-// Set the zoom, keeping whatever is under (ax, ay) -- client coordinates --
-// in the same place on screen afterwards, so zooming feels anchored on the
-// pointer rather than jumping to a corner.
-FarmView.prototype.setZoom = function (z, ax, ay) {
+// Set the zoom, keeping whatever is in the middle of the panel in the middle
+// afterwards, so zooming in on a big farm stays where you were looking rather
+// than jumping to a corner.
+FarmView.prototype.setZoom = function (z) {
   // quarter steps rather than whole numbers -- a whole step doubles the board
   // and the jump is jarring
   z = Math.round(z / FarmView.ZOOM_STEP) * FarmView.ZOOM_STEP;
   z = Math.max(FarmView.ZOOM_MIN, Math.min(FarmView.ZOOM_MAX, z));
   if (Math.abs(z - this.scale) < 0.001) return false;
 
-  const scroller = this.scroller();
-  const box = this.canvas.getBoundingClientRect();
-  const sBox = scroller ? scroller.getBoundingClientRect() : box;
+  const sc = this.scroller();
+  if (!sc) { this.userZoom = z; this.resize(); return true; }
 
-  // where the anchor falls on the board (0..1), and where it sits in the view
-  const fx = (ax == null ? sBox.left + sBox.width / 2 : ax - box.left) / box.width;
-  const fy = (ay == null ? sBox.top + sBox.height / 2 : ay - box.top) / box.height;
-  const holdX = (ax == null ? sBox.width / 2 : ax - sBox.left);
-  const holdY = (ay == null ? sBox.height / 2 : ay - sBox.top);
+  // Where the board's own top-left sits in the scroller's content. Not zero --
+  // the ruler column and row sit to its left and above it -- and it moves when
+  // the board is narrower than the panel and gets centred, so it is measured
+  // again after the resize.
+  const self = this;
+  function origin() {
+    const b = self.canvas.getBoundingClientRect();
+    const p = sc.getBoundingClientRect();
+    return {
+      x: b.left - p.left - sc.clientLeft + sc.scrollLeft,
+      y: b.top - p.top - sc.clientTop + sc.scrollTop
+    };
+  }
+
+  // the point of the board in the middle of the panel, as a fraction of it
+  const was = this.canvas.getBoundingClientRect();
+  const o = origin();
+  const fx = (sc.scrollLeft + sc.clientWidth / 2 - o.x) / was.width;
+  const fy = (sc.scrollTop + sc.clientHeight / 2 - o.y) / was.height;
 
   this.userZoom = z;
   this.resize();
 
-  if (scroller) {
-    const now = this.canvas.getBoundingClientRect();
-    scroller.scrollLeft = Math.max(0, fx * now.width - holdX);
-    scroller.scrollTop = Math.max(0, fy * now.height - holdY);
-  }
+  // and put it back in the middle
+  const now = this.canvas.getBoundingClientRect();
+  const n = origin();
+  sc.scrollLeft = Math.max(0, fx * now.width + n.x - sc.clientWidth / 2);
+  sc.scrollTop = Math.max(0, fy * now.height + n.y - sc.clientHeight / 2);
   return true;
 };
 

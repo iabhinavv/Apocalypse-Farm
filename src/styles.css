@@ -4,25 +4,28 @@
    -------------------------------------------------------------------------- */
 
 :root {
-  --paper: #f4ecd9;
-  --paper-2: #eae0c6;
-  --card: #fbf6e8;
-  --card-2: #f4ecd8;
-  --ink: #3a2b1c;
-  --ink-soft: #6d5a44;
-  --ink-faint: #94826a;
-  --rule: #d5c39c;
-  --edge: #a8865c;
-  --edge-dark: #6d5336;
-  --green: #4f8a3d;
-  --green-deep: #2f5c2a;
-  --gold: #b8791b;
-  --rust: #a2452f;
-  --sky: #35708f;
-  --shadow: rgba(60, 42, 24, .28);
+  --paper: #f4f6f8;
+  --paper-2: #e9edf1;
+  --card: #ffffff;
+  --card-2: #f7f9fb;
+  --ink: #14181d;
+  --ink-soft: #5b646f;
+  --ink-faint: #8b939f;
+  --rule: #e2e6eb;
+  --edge: #d2d8df;
+  --edge-dark: #1a1e24;
+  --green: #2f8a5b;
+  --green-deep: #246b47;
+  --gold: #b07a09;
+  --rust: #c0472c;
+  --sky: #2b6cb0;
+  --shadow: rgba(16, 22, 30, .10);
+  --shadow-up: rgba(16, 22, 30, .16);
+  --r: 10px;
+  --r-sm: 7px;
 
   --mono: "SF Mono", "Menlo", "Consolas", "Roboto Mono", monospace;
-  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --serif: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 /* Light throughout. A dark variant made the ruler gutter and the ground
@@ -57,8 +60,8 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 
 header.top {
   background: var(--edge-dark);
-  border-bottom: 3px solid var(--edge);
-  color: #f0e2c0;
+  border-bottom: 1px solid rgba(255,255,255,.10);
+  color: #f3f5f8;
   padding: 10px 20px;
   display: flex;
   align-items: baseline;
@@ -78,7 +81,7 @@ header.top h1 {
 
 header.top .sub {
   font-size: .78rem;
-  color: #c4b189;
+  color: #9aa3af;
   font-variant: small-caps;
   letter-spacing: .1em;
 }
@@ -88,16 +91,16 @@ header.top .spacer { flex: 1; }
 header.top .ctx {
   font-family: var(--mono);
   font-size: .78rem;
-  color: #e5d2a6;
+  color: #e8ebf0;
   background: rgba(0, 0, 0, .25);
-  border: 1px solid #7d6039;
+  border: 1px solid rgba(255,255,255,.16);
   padding: 3px 10px;
 }
 
 .linkbtn {
   background: none;
-  border: 1px solid #7d6039;
-  color: #e5d2a6;
+  border: 1px solid rgba(255,255,255,.16);
+  color: #e8ebf0;
   font-size: .74rem;
   font-variant: small-caps;
   letter-spacing: .1em;
@@ -129,7 +132,7 @@ header.top .ctx {
 .panel {
   background: var(--card);
   border: 2px solid var(--edge);
-  box-shadow: 4px 4px 0 var(--shadow);
+  box-shadow: 0 1px 2px var(--shadow), 0 6px 18px var(--shadow);
   padding: 20px 22px;
   margin-bottom: 24px;
 }
@@ -172,13 +175,13 @@ header.top .ctx {
   transition: transform .08s, background .12s;
 }
 
-.statebtn:hover { background: var(--paper-2); transform: translate(-1px, -1px); }
+.statebtn:hover { background: var(--card-2); border-color: var(--green); }
 
 .statebtn[aria-pressed="true"] {
   background: var(--green-deep);
   border-color: var(--green-deep);
-  color: #f2e8cd;
-  box-shadow: 3px 3px 0 var(--shadow);
+  color: #ffffff;
+  box-shadow: 0 1px 2px var(--shadow), 0 6px 18px var(--shadow);
 }
 
 .statebtn b { font-size: .95rem; font-weight: 600; }
@@ -189,7 +192,7 @@ header.top .ctx {
   font-family: var(--mono);
 }
 
-.statebtn[aria-pressed="true"] small { color: #cbdcbb; }
+.statebtn[aria-pressed="true"] small { color: rgba(255,255,255,.72); }
 
 .tag {
   display: inline-block;
@@ -233,17 +236,17 @@ header.top .ctx {
 .bigstart {
   width: 100%;
   background: var(--green-deep);
-  color: #f4ecd4;
+  color: #ffffff;
   border: 2px solid var(--edge-dark);
-  box-shadow: 4px 4px 0 var(--shadow);
+  box-shadow: 0 1px 2px var(--shadow), 0 6px 18px var(--shadow);
   font-size: 1.06rem;
   letter-spacing: .06em;
   font-variant: small-caps;
   padding: 13px;
 }
 
-.bigstart:hover { background: #3a6f31; }
-.bigstart:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--shadow); }
+.bigstart:hover { background: var(--green); }
+.bigstart:active { transform: translate(2px, 2px); box-shadow: 0 1px 2px var(--shadow), 0 6px 18px var(--shadow); }
 .bigstart[disabled] { opacity: .4; cursor: not-allowed; }
 
 /* --- main layout -------------------------------------------------------- */
@@ -275,7 +278,7 @@ header.top .ctx {
 
 .mapframe {
   border: 3px solid var(--edge-dark);
-  box-shadow: 5px 5px 0 var(--shadow);
+  box-shadow: 0 1px 2px var(--shadow), 0 6px 18px var(--shadow);
   background: var(--edge-dark);
   display: flex;
   justify-content: center;
@@ -351,7 +354,7 @@ header.top .ctx {
   background: var(--card);
   color: var(--ink);
   font-weight: 700;
-  box-shadow: inset 0 -3px 0 var(--green-deep);
+  box-shadow: inset 0 -2px 0 var(--green);
 }
 
 .tabbody { padding: 22px 26px 90px; max-width: 78ch; margin: 0 auto; }
@@ -439,7 +442,7 @@ header.top .ctx {
   font-weight: 700;
 }
 
-.step.done .tickbox { background: var(--green); border-color: var(--green-deep); color: #f4ecd4; }
+.step.done .tickbox { background: var(--green); border-color: var(--green-deep); color: #ffffff; }
 
 .steptitle { flex: 1; min-width: 0; }
 .steptitle b { font-weight: 600; font-size: 1rem; display: block; }
@@ -461,7 +464,7 @@ header.top .ctx {
   letter-spacing: .06em;
 }
 
-.chip:hover { background: var(--green-deep); color: #f2e8cd; border-color: var(--green-deep); }
+.chip:hover { background: var(--green-deep); color: #ffffff; border-color: var(--green-deep); }
 
 .costline {
   font-family: var(--mono);
@@ -671,9 +674,9 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
   z-index: 80;
   max-width: 34ch;
   background: var(--edge-dark);
-  color: #f2e6c8;
+  color: #eef1f5;
   border: 1px solid var(--edge);
-  box-shadow: 3px 3px 0 var(--shadow);
+  box-shadow: 0 1px 2px var(--shadow), 0 6px 18px var(--shadow);
   padding: 6px 10px;
   font-size: .8rem;
   line-height: 1.45;
@@ -697,7 +700,7 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 .autobtn {
   background: var(--card-2);
   border: 2px solid var(--edge);
-  box-shadow: 2px 2px 0 var(--shadow);
+  box-shadow: 0 1px 2px var(--shadow), 0 6px 18px var(--shadow);
   font-variant: small-caps;
   letter-spacing: .08em;
   font-size: .8rem;
@@ -705,7 +708,7 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 }
 
 .autobtn:hover { background: var(--paper-2); }
-.autobtn:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--shadow); }
+.autobtn:active { transform: translate(1px, 1px); box-shadow: 0 1px 2px var(--shadow), 0 6px 18px var(--shadow); }
 .autobtn[disabled] { opacity: .45; cursor: not-allowed; }
 
 .autostatus { font-family: var(--mono); font-size: .74rem; color: var(--ink-faint); }
@@ -747,7 +750,7 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 
 /* --- the guide drawer sits on off-white, not the warm card tone ---------- */
 
-:root { --sheet: #fbf8f1; --sheet-2: #f2ede1; }
+:root { --sheet: #ffffff; --sheet-2: #f4f6f9; }
 
 .drawer { background: var(--sheet); }
 .drawerhead { background: var(--sheet-2); }
@@ -801,9 +804,9 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
   pointer-events: auto;
   /* a small nameplate -- the size, crop and counts are one hover away */
   background: var(--edge-dark);
-  color: #f2e6c6;
-  border: 1px solid #2f2416;
-  border-bottom: 2px solid #2f2416;
+  color: #ffffff;
+  border: 1px solid rgba(0,0,0,.25);
+  border-bottom: 1px solid rgba(0,0,0,.25);
   padding: 1px 7px 2px;
   font-family: var(--serif);
   font-size: .62rem;
@@ -813,15 +816,15 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
   line-height: 1.35;
   white-space: nowrap;
   text-align: center;
-  box-shadow: 1px 2px 0 rgba(0, 0, 0, .3);
+  box-shadow: 0 2px 6px rgba(0,0,0,.28);
   opacity: .9;
 }
 
 .sign:not([disabled]):hover {
   opacity: 1;
   z-index: 5;
-  background: #6b5228;
-  border-color: #1f1810;
+  background: var(--green);
+  border-color: var(--green-deep);
 }
 
 .sign[disabled] { cursor: default; }
@@ -833,7 +836,7 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 .linkbtn.arm {
   background: var(--rust);
   border-color: var(--rust);
-  color: #fff4e6;
+  color: #ffffff;
 }
 
 /* --- zone nameplates carved from the wooden signboard sheet -------------- */
@@ -857,7 +860,7 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
   padding: 4px 6px;
   background: rgba(247, 240, 222, .92);
   border: 1px solid var(--edge);
-  box-shadow: 2px 2px 0 var(--shadow);
+  box-shadow: 0 1px 2px var(--shadow), 0 6px 18px var(--shadow);
 }
 
 .zoomctl > .smallcaps { font-size: .64rem; margin-right: 1px; }
@@ -901,3 +904,84 @@ table.data tr.total td { border-top: 2px solid var(--edge); border-bottom: none;
 
 .onfarm .factrow { border-bottom-color: rgba(0, 0, 0, .07); }
 .onfarm .factrow:last-child { border-bottom: none; }
+
+/* ===========================================================================
+   Modern shell.
+   Shape only -- colours come from the tokens above. This sits last so it wins
+   over the hard edges the earlier rules set, without rewriting them. The map
+   canvas and its rulers are deliberately left alone: that is the game.
+   =========================================================================== */
+
+/* soft corners on everything that is a surface */
+.panel, .statebtn, .mapinfo, .guidecard, .callout, .costline, .pending,
+.autobar, .onfarm, .maptip, .mapscroll, .zoomctl, .acreBig, .phasehead,
+.step, .mapcap, .drawerhead {
+  border-radius: var(--r);
+}
+
+.linkbtn, .presets button, .bigstart, .tabs button, .autobtn, .zoombtn,
+.tickbox, header.top .ctx, .meter .bar, .meter .bar i {
+  border-radius: var(--r-sm);
+}
+
+/* pills */
+.tag, .chip, .sign { border-radius: 999px; }
+
+/* hairlines instead of woodcut edges */
+.panel, .guidecard, .callout, .costline, .pending, .autobar, .mapinfo,
+.mapscroll, .step, .statebtn {
+  border-width: 1px;
+  border-color: var(--rule);
+}
+
+.panel, .guidecard, .mapinfo, .autobar, .step {
+  background: var(--card);
+  box-shadow: 0 1px 2px var(--shadow);
+}
+
+/* labels: tracked uppercase reads cleaner on screen than true small caps */
+.smallcaps {
+  font-variant: normal;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: .68rem;
+  font-weight: 600;
+}
+
+.linkbtn, .bigstart, .tag, .sign, .zoombtn.wide, .tabs button, .autobtn {
+  font-variant: normal;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.bigstart { font-weight: 600; border: none; }
+.linkbtn, .tabs button, .autobtn, .zoombtn, .presets button { font-weight: 500; }
+
+/* the header bar */
+header.top { padding: 12px 22px; }
+header.top h1 { letter-spacing: -.01em; }
+
+/* the signboards over the map: small dark pills, not carved plaques */
+.sign {
+  font-family: var(--serif);
+  font-weight: 600;
+  letter-spacing: .01em;
+  border: none;
+  background: rgba(20, 24, 30, .82);
+  opacity: 1;
+}
+
+/* focus that is visible without being loud */
+button:focus-visible, input:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: 2px;
+}
+
+body { line-height: 1.55; }
+
+/* the header stacks on a phone -- drop the strapline so it stays one band */
+@media (max-width: 620px) {
+  header.top { padding: 10px 14px; gap: 10px; }
+  header.top h1 { font-size: 1rem; }
+  header.top .sub { display: none; }
+}
